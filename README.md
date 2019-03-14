@@ -27,7 +27,8 @@ cd Starship-battle
 Compile:
 
 ```
-cmake . ; cmake --build . --config Release
+cmake .
+cmake --build . --config Release
 ```
 
 Run:
