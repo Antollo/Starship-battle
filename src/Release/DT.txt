@@ -1,0 +1,40 @@
+3
+0 -0.1
+1.5 0
+0 0.1
+
+0.5 0
+
+20
+
+3
+0 -0.2
+0.6 0
+0 0.2
+
+
+44
+0.01
+0.4
+
+n
+x y
+x y
+x y
+...
+
+x y (origin)
+
+maxRotatiion
+
+n (bullet)
+x y
+x y
+x y
+...
+
+v (bullet velocity)
+accuracy
+penetration angle
+
+sound

@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build with cmake and run",
+            "type": "shell",
+            "command": "cmake . ; cmake --build . --config Release ; Start-Process -FilePath ./src/Release/starship_battle.exe -WorkingDirectory ./src/Release",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

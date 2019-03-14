@@ -1,0 +1,4 @@
+set(BUILD_SHARED_LIBS FALSE)
+set(SFML_USE_STATIC_STD_LIBS TRUE)
+
+add_subdirectory(SFML)

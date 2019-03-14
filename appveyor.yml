@@ -1,0 +1,11 @@
+version: 0.0.{build}
+image:
+    - Visual Studio 2017
+before_build:
+    - cmake .
+build_script:
+    - cmake --build . --config Release
+artifacts:
+    - path: src/Release
+      name: artifacts
+      type: zip
