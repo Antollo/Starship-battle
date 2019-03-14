@@ -2,6 +2,7 @@ version: 0.0.{build}
 image:
     - Visual Studio 2017
 before_build:
+    - git submodule update --init --recursive
     - cmake .
 build_script:
     - cmake --build . --config Release

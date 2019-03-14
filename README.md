@@ -21,7 +21,7 @@ git clone --recurse-submodules https://github.com/Antollo/Starship-battle.git
 ```
 
 ```
-cd "Starship battle"
+cd Starship-battle
 ```
 
 Compile:
@@ -37,9 +37,9 @@ cd src/Release
 ./starship_battle
 ```
 
-## Deployment
+## CI
 
-TODO
+[AppVeyor](https://ci.appveyor.com/project/Antollo/starship-battle)
 
 ## Contributing
 
