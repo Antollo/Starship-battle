@@ -2,7 +2,11 @@
 
 Two dimensional game with good physics and command line user interface.
 
-## Getting Started
+## I just want to play...
+
+Download the newest version from [here](https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src\artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017).
+
+## Development - getting started
 
 ### Prerequisites
 

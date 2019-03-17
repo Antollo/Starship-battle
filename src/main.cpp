@@ -53,6 +53,11 @@ int main()
         (*Object::console)
         << L"\nSpaceship commander command prompt\n"
         << L"version from " << CommandProcessor::converter.from_bytes(__DATE__) << L" " << CommandProcessor::converter.from_bytes(__TIME__) << L"\n"
+        << L"Use W key to accelerate\n"
+        << L"Use A and D keys to rotate\n"
+        << L"Use mouse right button to aim\n"
+        << L"Use mouse left button to shoot\n"
+        << L"Use mouse wheel to scale the view\n"
         << L"Use tab to switch console input\n"
         << L"These shell commands are defined internally\n"
         << L"    beep                                \n"
