@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { download } = require('electron-dl');
-require('update-electron-app')();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
@@ -73,4 +72,8 @@ ipcMain.on('download', (event, info) => {
     }
     download(BrowserWindow.getFocusedWindow(), info.url, info.properties)
         .then(dl => mainWindow.webContents.send('download complete', dl.getSavePath()));
+});
+
+require('update-electron-app')({
+    logger: require('electron-log')
 });
