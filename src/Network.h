@@ -2,6 +2,7 @@
 #define NETWORK_H_
 
 #include <vector>
+#include <utility>
 #include <memory>
 #include <iostream>
 #include <SFML/Network.hpp>
@@ -45,10 +46,10 @@ public:
         {
             if (selector.isReady(listener))
             {
-                clients.push_back(std::make_unique<sf::TcpSocket>());
-                if (listener.accept(*clients.back()) == sf::Socket::Done)
+                clients.push_back({std::make_unique<sf::TcpSocket>(), false});
+                if (listener.accept(*clients.back().first) == sf::Socket::Done)
                 {
-                    selector.add(*clients.back());
+                    selector.add(*clients.back().first);
                     std::cout << "New client connected\n";
                 }
                 else
@@ -59,10 +60,11 @@ public:
     
             for (auto it = clients.begin(); it != clients.end(); it++)
             {
-                if (selector.isReady(**it))
+                if (selector.isReady(*it->first))
                 {
                     lastClient = it;
-                    return (*it)->receive(packet);
+                    it->second = true;
+                    return it->first->receive(packet);
                 }
             }
         }
@@ -71,22 +73,35 @@ public:
 
     sf::Socket::Status respond(sf::Packet& packet)
     {
-        return (*lastClient)->send(packet);
+        return lastClient->first->send(packet);
+    }
+
+    sf::Socket::Status respondActive(sf::Packet& packet)
+    {
+        for (auto& pair : clients)
+        {
+			if (pair.second)
+            {
+                pair.second = false;
+                pair.first->send(packet);
+            }
+        }
+        return sf::Socket::Status::Done;
     }
 
     sf::Socket::Status send(sf::Packet& packet)
     {
-        for (auto& ptr : clients)
+        for (auto& pair : clients)
         {
-			ptr->send(packet);
+			pair.first->send(packet);
         }
         return sf::Socket::Status::Done;
     }
 
 private:
     sf::TcpListener& listener;
-    std::vector<std::unique_ptr<sf::TcpSocket>> clients;
-    std::vector<std::unique_ptr<sf::TcpSocket>>::iterator lastClient;
+    std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>> clients;
+    std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>>::iterator lastClient;
     sf::SocketSelector selector;
 };
 

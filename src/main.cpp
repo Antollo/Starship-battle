@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         return 0;
     }
     std::string arg = argv[1];
-    int host, tick = 0, upEventCounter = 0;
+    int tick = 0, upEventCounter = 0;
     bool serverSide = (arg == "server");
     if (!serverSide && argc < 3)
     {
@@ -160,9 +160,6 @@ int main(int argc, char *argv[])
     sf::Event event;
     sf::Packet packet;
 
-    std::cout << std::flush;
-    std::cerr << std::flush;
-
     if (!serverSide)
     {
         resourceManager::playSound("glitch.wav");
@@ -178,6 +175,9 @@ int main(int argc, char *argv[])
             std::cerr << "Shader not loaded.\n";
         }*/
     }
+
+    std::cout << std::flush;
+    std::cerr << std::flush;
 
     while (window.isOpen() || serverSide)
     {
@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
             {
                 packet >> upEvent;
 
-                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command)
+                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid)
                 {
                     continue;
                 }
@@ -297,14 +297,13 @@ int main(int argc, char *argv[])
                 object.second->process();
 
             Object::world.Step(delta, 8, 3);
-            
 
             renderSerializer.clear();
             for (const auto& object : Object::objects)
                 renderSerializer.draw(*(object.second));
             packet.clear();
             packet << renderSerializer.getDownEvent();
-            server.send(packet);
+            server.respondActive(packet);
             while (!downEvents.empty())
             {
                 packet.clear();
@@ -321,7 +320,10 @@ int main(int argc, char *argv[])
             if (console.isTextEntered())
                 upEvents.emplace(UpEvent::Type::Command, console.get());
                 //console << commandProcessor.call(console.get());
-            
+
+            if (upEvents.empty())
+                upEvents.emplace();
+
             while (!upEvents.empty())
             {
                 packet.clear();
@@ -419,7 +421,7 @@ int main(int argc, char *argv[])
         }
         //...
         tick++;
-        if (tick >= 1000)
+        if (tick >= 10000)
         {
             tick = 0;
             if(serverSide) {
