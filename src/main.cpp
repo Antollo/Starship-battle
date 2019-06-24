@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
         }
         //...
         tick++;
-        if (tick >= 10000)
+        if (tick >= 1000)
         {
             tick = 0;
             if(serverSide) {

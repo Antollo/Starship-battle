@@ -63,6 +63,10 @@
             border-collapse: collapse;
         }
 
+        .pre-wrap {
+            white-space: pre-wrap;
+        }
+
         *::-webkit-scrollbar {
             width: 12px;
         }
@@ -106,13 +110,21 @@
     const { ipcRenderer, remote } = require('electron');
     const tableify = require('tableify');
 
+    function check() {
+        if (document.getElementById('log').childNodes.length <= 1000)
+            return;
+        document.getElementById('log').removeChild(document.getElementById('log').firstChild);
+    }
+
     function log(str) {
         document.getElementById('log').insertAdjacentHTML('beforeend', '<div>' + str + '</div>');
+        check();
     }
 
     function extendedLog(entity, str) {
         document.getElementById('log')
-            .insertAdjacentHTML('beforeend', `<div><div class="entity">${entity}, ${new Date().toLocaleTimeString()}</div>${str}</div>`);
+            .insertAdjacentHTML('beforeend', `<div class="pre-wrap"><div class="entity">${entity}, ${new Date().toLocaleTimeString()}</div>${str}</div>`);
+        check();
     }
 
     async function dialog(description) {
