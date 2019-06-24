@@ -14,7 +14,7 @@ public:
         selector.add(socket);
     }
 
-    sf::Socket::Status receive(sf::Packet& packet, sf::Time timeout = sf::milliseconds(1))
+    sf::Socket::Status receive(sf::Packet& packet, sf::Time timeout = sf::microseconds(1))
     {
         if (selector.wait(timeout))
             if (selector.isReady(socket))
@@ -39,7 +39,7 @@ public:
         selector.add(listener);
     }
 
-    sf::Socket::Status receive(sf::Packet& packet, sf::Time timeout = sf::milliseconds(1)) 
+    sf::Socket::Status receive(sf::Packet& packet, sf::Time timeout = sf::microseconds(1)) 
     {
         if (selector.wait(timeout))
         {

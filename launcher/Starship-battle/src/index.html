@@ -171,7 +171,7 @@
         }));*/
         if (server instanceof ChildProcess)
             server.kill();
-        log('Server address: ' + ip.address());
+        log('Server ip: ' + ip.address());
         server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, ['server'], {
             cwd: __dirname + '/'
         });

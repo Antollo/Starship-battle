@@ -1,7 +1,7 @@
 {
     "name": "starship-battle",
     "productName": "starship-battle",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Starship Battle game launcher",
     "main": "src/index.js",
     "scripts": {
@@ -34,7 +34,8 @@
                             "owner": "Antollo",
                             "name": "Starship-battle"
                         },
-                        "prerelease": true
+                        "prerelease": false,
+                        "draft": false
                     }
                 }
             ],

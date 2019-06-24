@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         return 0;
     }
     std::string arg = argv[1];
-    int host;
+    int host, tick = 0, upEventCounter = 0;
     bool serverSide = (arg == "server");
     if (!serverSide && argc < 3)
     {
@@ -57,8 +57,9 @@ int main(int argc, char *argv[])
 	if (!serverSide)
         socket.connect(arg, std::stoi((std::string) argv[2]));
     Client client(socket);
-    DownEvent downEvent;
-    const DownEvent::Player* pl;
+    DownEvent downEvent, downEventDirectDraw;
+    bool directDrew = false;
+    const DownEvent::Player* pl = nullptr; 
     std::queue<UpEvent> upEvents;
 
     sf::RenderWindow window; //Graphic window
@@ -159,6 +160,9 @@ int main(int argc, char *argv[])
     sf::Event event;
     sf::Packet packet;
 
+    std::cout << std::flush;
+    std::cerr << std::flush;
+
     if (!serverSide)
     {
         resourceManager::playSound("glitch.wav");
@@ -257,7 +261,7 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-                std::cout << "UpEvent received.\n";
+                upEventCounter ++;
 
                 switch (upEvent.type)
                 {
@@ -326,7 +330,7 @@ int main(int argc, char *argv[])
                 upEvents.pop();
             }
 
-            window.clear(sf::Color::Black);
+            directDrew = false;
 
             while (client.receive(packet) == sf::Socket::Status::Done)
             {
@@ -334,24 +338,9 @@ int main(int argc, char *argv[])
                 switch (downEvent.type)
                 {
                 case DownEvent::Type::DirectDraw:
-                    window.clear(sf::Color::Black);
-                    pl = downEvent.findPlayer(Object::thisPlayerId);
-                    if (pl == nullptr)
-                    {
-                        Object::thisPlayerId = -1;
-                        window.setView({{0.f, 0.f}, window.getView().getSize()});
-                        cursor.setState();
-                    }
-                    else
-                    {
-                        window.setView({pl->coords, window.getView().getSize()});
-                        cursor.setState(pl->reload, pl->hp, pl->maxHp);
-                    }
-                    
-                    for (const auto& polygon : downEvent.polygons)
-                    {
-                        window.draw(polygon.vertices, polygon.states);
-                    }
+                    if (directDrew) break;
+                    directDrew = true;
+                    downEventDirectDraw = downEvent;
                     break;
                 case DownEvent::Type::Collision:
                     if (downEvent.explosion)
@@ -388,6 +377,25 @@ int main(int argc, char *argv[])
                 }
             }
 
+            window.clear(sf::Color::Black);
+            pl = downEventDirectDraw.findPlayer(Object::thisPlayerId);
+            if (pl == nullptr)
+            {
+                Object::thisPlayerId = -1;
+                window.setView({{0.f, 0.f}, window.getView().getSize()});
+                cursor.setState();
+            }
+            else
+            {
+                window.setView({pl->coords, window.getView().getSize()});
+                cursor.setState(pl->reload, pl->hp, pl->maxHp);
+            }
+            
+            for (const auto& polygon : downEventDirectDraw.polygons)
+            {
+                window.draw(polygon.vertices, polygon.states);
+            }
+
             particleSystem.update(delta);
 
             window.draw(grid);
@@ -410,8 +418,17 @@ int main(int argc, char *argv[])
             window.display();*/
         }
         //...
-        std::cout << std::flush;
-        std::cerr << std::flush;
+        tick++;
+        if (tick >= 1000)
+        {
+            tick = 0;
+            if(serverSide) {
+                std::cout << upEventCounter << " UpEvent received.\n";
+                upEventCounter = 0;
+            }
+            std::cout << std::flush;
+            std::cerr << std::flush;
+        }
     }
 	Object::objects.clear();
 
