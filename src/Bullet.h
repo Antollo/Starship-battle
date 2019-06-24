@@ -6,14 +6,20 @@
 class Bullet : public Object, public sf::Transformable
 {
 public:
-    static Bullet* create(const std::vector<Vec2f>& points, Vec2f position, const float& angle, const float& penetrationAngle, const Vec2f& velocity, const int& index)
+    static Bullet* create(const std::vector<Vec2f>& points, Vec2f position, const float& angle, const float& newPenetration, const float& newDamage, const Vec2f& velocity, const int& index)
     {
-        objects.emplace_back(new Bullet(points, position, angle, penetrationAngle, velocity, index));
-        return dynamic_cast<Bullet*>(objects.back().get());
+        //objects.emplace_back(new Bullet(points, position, angle, penetrationAngle, velocity, index));
+        //return dynamic_cast<Bullet*>(objects.back().get());
+        return dynamic_cast<Bullet*>(objects.emplace(counter, new Bullet(points, position, angle, newPenetration, newDamage, velocity, index)).first->second.get());
     }
-    const Object::typeId getTypeId() const noexcept override
+    const Object::TypeId getTypeId() const override
     {
-        return Object::typeId::Bullet;
+        return Object::TypeId::Bullet;
+    }
+    Vec2f getCenterPosition() const override
+    {
+        body->GetMassData(const_cast<b2MassData*>(&massData));
+        return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
     }
     ~Bullet() override
     {
@@ -30,7 +36,8 @@ public:
         Object::process();
     }
 private:
-    Bullet(const std::vector<Vec2f>& points, const Vec2f& position, const float& angle, const float& penetrationAngle, const Vec2f& velocity, const int& index) : minAngle(penetrationAngle)
+    Bullet(const std::vector<Vec2f>& points, const Vec2f& position, const float& angle, const float& newPenetration, const float& newDamage, const Vec2f& velocity, const int& index)
+        : penetration(newPenetration), damage(newDamage)
     {
         b2BodyDef bodyDef;
         bodyDef.position = position;
@@ -47,8 +54,8 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = 10;
-        fixtureDef.friction = 0.5;
+        fixtureDef.density = 6.f;
+        fixtureDef.friction = 0.2f;
         fixtureDef.filter.groupIndex = index;
         fixtureDef.shape = &shape;
         body->CreateFixture(&fixtureDef);
@@ -70,14 +77,16 @@ private:
         states.transform *= getTransform();
         target.draw(polygon, states);
     }
-    inline int getID()
+    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
     {
-        return -body->GetFixtureList()[0].GetFilterData().groupIndex;
+        states.transform *= getTransform();
+        target.draw(polygon, states);
     }
+    ObjectId getId() override { return -body->GetFixtureList()[0].GetFilterData().groupIndex; }
     sf::VertexArray polygon;
     b2Body* body;
     b2MassData massData;
-    float minAngle;
+    float penetration, damage;
     friend class ContactListener;
 };
 

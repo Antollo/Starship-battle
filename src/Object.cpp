@@ -1,9 +1,7 @@
 #include "Object.h"
 
-int Object::counter = 0;
-Console* Object::console = nullptr;
-Spaceship* Object::spaceship = nullptr;
-ParticleSystem* Object::particleSystem = nullptr;
+int Object::counter = 1;
+Object::ObjectId Object::thisPlayerId = -1;
 Object::ObjectsContainer Object::objects;
 b2World Object::world = b2Vec2(0, 0);
 std::random_device Object::rd;

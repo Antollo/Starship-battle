@@ -3,15 +3,14 @@
 
 #include "Object.h"
 
-class ParticleSystem : public sf::Transformable, public Object
+class ParticleSystem : public sf::Transformable, public sf::Drawable
 {
 public:
-    static ParticleSystem* create()
+    /*static ParticleSystem* create()
     {
-        objects.emplace_back(new ParticleSystem());
-        particleSystem = dynamic_cast<ParticleSystem*>(objects.front().get());
+        particleSystem = dynamic_cast<ParticleSystem*>(objects.emplace(counter, new ParticleSystem()).first->second.get());
         return particleSystem;
-    }
+    }*/
     ParticleSystem(unsigned int count = 10000) :
     m_particles(count),
     m_vertices(count),
@@ -46,10 +45,10 @@ public:
             if (j >= 300) break;
         }
     }
-    const typeId getTypeId() const noexcept override
+    /*const TypeId getTypeId() const noexcept override
     {
-        return Object::typeId::ParticicleSystem;
-    }
+        return Object::TypeId::ParticicleSystem;
+    }*/
 
 private:
     struct Particle
@@ -69,10 +68,10 @@ private:
     }
     void resetParticle(std::size_t index)
     {
-        float angle  = rng01(mt) * pi * 2.f;
-        float speed = rng01(mt) * 150.f;
+        float angle  = Object::rng01(Object::mt) * pi * 2.f;
+        float speed = Object::rng01(Object::mt) * 150.f;
         m_particles[index].velocity = sf::Vector2f(std::cosf(angle) * speed, std::sinf(angle) * speed);
-        m_particles[index].lifetime = rng01(mt) * 2.5f;
+        m_particles[index].lifetime = Object::rng01(Object::mt) * 2.5f;
         m_vertices[index].position = m_emitter;
         m_vertices[index].color = sf::Color::White;
     }

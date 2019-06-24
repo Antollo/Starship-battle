@@ -7,84 +7,76 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
-#include <Box2D\Box2D.h>
-#include <SFML\Graphics.hpp>
+#include <cstdint>
+#include <string>
+#include <SFML/Graphics.hpp>
+#include "Vec2f.h"
 
-constexpr float pi = 3.14159265358979323846f;
+using namespace std::string_literals;
 
-class Vec2f
+class RenderSerializable;
+
+class RenderSerializerBase
 {
 public:
-    float x, y;
-    static const Vec2f& asVec2f (const sf::Vector2f& vec)
-    {
-        return *reinterpret_cast<const Vec2f*>(&vec);
-    }
-    static const Vec2f& asVec2f (const b2Vec2& vec)
-    {
-        return *reinterpret_cast<const Vec2f*>(&vec);
-    }
-    operator sf::Vector2f&()
-    {
-        return *reinterpret_cast<sf::Vector2f*>(this);
-    }
-    operator b2Vec2&()
-    {
-        return *reinterpret_cast<b2Vec2*>(this);
-    }
-    operator const sf::Vector2f&() const
-    {
-        return *reinterpret_cast<const sf::Vector2f*>(this);
-    }
-    operator const b2Vec2&() const
-    {
-        return *reinterpret_cast<const b2Vec2*>(this);
-    }
-    float squaredDistance(const Vec2f& vec) const
-    {
-        return (x-vec.x)*(x-vec.x) + (y-vec.y)*(y-vec.y);
-    }
+    virtual void draw(const RenderSerializable& drawable, const sf::RenderStates& states = sf::RenderStates::Default) noexcept = 0;
+    virtual void draw(const sf::VertexArray& vertexArray, const sf::RenderStates& states = sf::RenderStates::Default) noexcept = 0;
+};
+
+class RenderSerializable
+{
+private:
+    friend class RenderSerializerBase;
+    friend class RenderSerializer;
+    virtual void draw(RenderSerializerBase&, sf::RenderStates states) const noexcept = 0;
 };
 
 
-class Console;
-class Spaceship;
-class ParticleSystem;
-
-class Object : public sf::Drawable
+class Object : public sf::Drawable, public RenderSerializable 
 {
 public:
-	using ObjectsContainer = std::list<std::unique_ptr<Object>>;
-    enum class typeId { Invalid, Console, PrototypeSpaceship, Spaceship, Bullet, Cursor, ParticicleSystem, Bot, Rock };
-    virtual const typeId getTypeId() const noexcept = 0;
-    Object() : destroy(false) {};
-    virtual ~Object() {};
+	using ObjectId = std::int32_t;
+	using ObjectsContainer = std::map<ObjectId, std::unique_ptr<Object>>;
+	enum class TypeId { Invalid, PrototypeSpaceship, Spaceship, Bullet, Bot, Rock };
+
+	/*class UpdateState {
+	public:
+		TypeId typeId;
+		bool destroy;
+		Vec2f position, linearVelocity;
+		float angle, angularVelocity;
+	};
+	virtual const void consumeUpdateState(const UpdateState& state) const noexcept = 0;*/
+	virtual const TypeId getTypeId() const { return TypeId::Invalid; };
+    virtual Vec2f getCenterPosition() const = 0;
+    Object() : destroy(false), id(++counter) {};
+    virtual ObjectId getId() { return id; }
     virtual void process()
     {
         if (destroy) onDestroy();
     }
     bool destroy;
-    static int counter; //Physics
+    static int counter;
 	static ObjectsContainer objects;
-    static Console* console;
-    static Spaceship* spaceship;
-    static ParticleSystem* particleSystem;
+    static ObjectId thisPlayerId;
     static b2World world;
     static std::random_device rd;
     static std::mt19937 mt;
     static std::uniform_real_distribution<float> rng025, rng01;
     static constexpr float worldScale = 40.f;
     static constexpr float worldLimits = 12000.f;
+	virtual ~Object() { }
 private:
+    ObjectId id;
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept = 0;
+    
 	void onDestroy()
     {
-        objects.erase(std::find_if (objects.cbegin(), objects.cend(), [this](const std::unique_ptr<Object>& ptr) {
-            return ptr.get() == this;
-        }));
-        if (reinterpret_cast<Object*>(console) == this) console = nullptr;
-		if (reinterpret_cast<Object*>(spaceship) == this) spaceship = nullptr;
-        if (reinterpret_cast<Object*>(particleSystem) == this) particleSystem = nullptr;
+		//objects.erase(getId()); Bullets represents owners;
+		objects.erase(id);
+        /*objects.erase(std::find_if(objects.begin(), objects.end(), [this](const auto& it) {
+            return it.second.get() == this;
+        }));*/
     }
 };
 

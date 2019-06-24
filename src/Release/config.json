@@ -1,0 +1,6 @@
+{
+    "executable": "starship_battle_game",
+    "spaceships": [
+        "D", "T-3", "T-4", "T-4A", "V7"
+    ]
+}

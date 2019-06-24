@@ -1,0 +1,45 @@
+{
+    "linearDamping": 0.7,
+    "angularDamping": 0.8,
+    "force": 165,
+    "torque": 70,
+    "friction": 0.5,
+    "density": 4,
+    "reload": 1.7,
+    "hp": 620,
+    "armor": 62,
+    "points": [
+        {
+            "x": 0,
+            "y": 0
+        },
+        {
+            "x": 2,
+            "y": 0
+        },
+        {
+            "x": 3,
+            "y": 1
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 0,
+            "y": 2
+        }
+    ],
+    "turrets": [
+        {
+            "type": "TT",
+            "x": 0.5,
+            "y": 1
+        },
+        {
+            "type": "TT",
+            "x": 1.5,
+            "y": 1
+        }
+    ]
+}

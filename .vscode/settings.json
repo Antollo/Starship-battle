@@ -216,6 +216,7 @@
         "**/healthchecksdb": true
     },
     "files.associations": {
+        "*.hpp": "cpp",
         "algorithm": "cpp",
         "chrono": "cpp",
         "cmath": "cpp",
@@ -286,7 +287,19 @@
         "xhash": "cpp",
         "queue": "cpp",
         "random": "cpp",
-        "codecvt": "cpp"
+        "codecvt": "cpp",
+        "array": "cpp",
+        "regex": "cpp",
+        "cctype": "cpp",
+        "variant": "cpp",
+        "bitset": "cpp",
+        "clocale": "cpp",
+        "csignal": "cpp",
+        "forward_list": "cpp",
+        "numeric": "cpp",
+        "string_view": "cpp",
+        "unordered_set": "cpp",
+        "valarray": "cpp"
     },
     "cSpell.words": [
         "cbegin",

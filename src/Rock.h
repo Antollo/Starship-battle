@@ -5,7 +5,6 @@
 #include <utility>
 #include <stdexcept>
 #include "Object.h"
-#include "Turret.h"
 #include "Console.h"
 
 class Rock : public Object, public sf::Transformable
@@ -13,12 +12,16 @@ class Rock : public Object, public sf::Transformable
 public:
     static Rock* create()
     {
-        objects.emplace_back(new Rock());
-        return dynamic_cast<Rock*>(objects.back().get());
+        return dynamic_cast<Rock*>(objects.emplace(counter, new Rock()).first->second.get());
     }
-    const Object::typeId getTypeId() const noexcept override
+    const Object::TypeId getTypeId() const override
     {
-        return Object::typeId::Rock;
+        return Object::TypeId::Rock;
+    }
+    Vec2f getCenterPosition() const override
+    {
+        body->GetMassData(const_cast<b2MassData*>(&massData));
+        return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
     }
     ~Rock() override
     {
@@ -45,14 +48,13 @@ private:
         bodyDef.position.y = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
 
         body = world.CreateBody(&bodyDef);
-        constexpr std::size_t n = 7;
         std::vector<Vec2f> points(n);
-        float angle;
+        float angle, radius = Object::rng01(mt) * 8 + 6;
         for (auto& point : points)
         {
             angle = Object::rng01(mt) * pi * 2.f;
-            point.x = std::cosf(angle) * 10.f;
-            point.y = std::sinf(angle) * 10.f;
+            point.x = std::cosf(angle) * radius;
+            point.y = std::sinf(angle) * radius;
         }
         std::sort(points.begin(), points.end(), [](const auto& a, const auto& b){
             return std::atan2f(a.y, a.x) < std::atan2f(b.y, b.x);
@@ -78,6 +80,11 @@ private:
         polygon[n] = polygon[0];
     }
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
+    {
+        states.transform *= getTransform();
+        target.draw(polygon, states);
+    }
+    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
     {
         states.transform *= getTransform();
         target.draw(polygon, states);

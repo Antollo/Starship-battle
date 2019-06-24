@@ -7,22 +7,39 @@
 #include <future>
 #include "Object.h"
 
-class Console : public Object
+class Console : public sf::Drawable
 {
 public:
-    static Console* create()
+    /*static Console* create()
     {
-        objects.emplace_back(new Console());
-        console = dynamic_cast<Console*>(objects.back().get());
+        console = dynamic_cast<Console*>(objects.emplace(counter, new Console()).first->second.get());
         return console;
     }
-    /*~Console()
+    ~Console()
     {
         std::wstringstream s;
         s.str(L"end");
         std::wcin.set_rdbuf(s.rdbuf());
         wcinFuture.wait();
     }*/
+    Console() : active(true)
+    {
+        font.loadFromFile("UbuntuMono.ttf");
+        textOutput.setFont(font);
+        textInput.setFont(font);
+        textOutput.setCharacterSize(18);
+        textInput.setCharacterSize(18);
+        textOutput.setFillColor(sf::Color::White);
+        textInput.setFillColor(sf::Color::White);
+        textInput.setString(">_");
+        correctOrigin();
+        /*wcinFuture = std::async(std::launch::async, []()
+        {
+            std::wstring in;
+            std::getline(std::wcin, in);
+            return in;
+        });*/
+    }
     template <class T>
     Console& operator<<(const T& out)
     {
@@ -80,10 +97,10 @@ public:
         }
         return L"";
     }
-    const Object::typeId getTypeId() const noexcept override
+    /*const Object::TypeId getTypeId() const noexcept override
     {
-        return Object::typeId::Console;
-    }
+        return Object::TypeId::Console;
+    }*/
     const bool isTextEntered() const noexcept
     {
         return !entered.empty() /*|| wcinFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready*/;
@@ -116,24 +133,6 @@ public:
         }
     }
 private:
-    Console() : active(true)
-    {
-        font.loadFromFile("UbuntuMono.ttf");
-        textOutput.setFont(font);
-        textInput.setFont(font);
-        textOutput.setCharacterSize(18);
-        textInput.setCharacterSize(18);
-        textOutput.setFillColor(sf::Color::White);
-        textInput.setFillColor(sf::Color::White);
-        textInput.setString(">_");
-        correctOrigin();
-        /*wcinFuture = std::async(std::launch::async, []()
-        {
-            std::wstring in;
-            std::getline(std::wcin, in);
-            return in;
-        });*/
-    }
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {
         sf::View temp = target.getView();

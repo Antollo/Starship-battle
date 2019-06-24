@@ -1,0 +1,84 @@
+{
+    "name": "starship-battle",
+    "productName": "starship-battle",
+    "version": "0.1.0",
+    "description": "Starship Battle game launcher",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "electron-forge start",
+        "package": "electron-forge package",
+        "make": "electron-forge make",
+        "publish": "electron-forge publish",
+        "lint": "echo \"No linting configured\""
+    },
+    "keywords": [],
+    "author": "Antoni Nowinowski",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Antollo/Starship-battle.git"
+    },
+    "config": {
+        "forge": {
+            "packagerConfig": {
+                "win32metadata": {
+                    "ProductName": "Starship battle",
+                    "CompanyName": "Antollo"
+                }
+            },
+            "publishers": [
+                {
+                    "name": "@electron-forge/publisher-github",
+                    "config": {
+                        "repository": {
+                            "owner": "Antollo",
+                            "name": "Starship-battle"
+                        },
+                        "prerelease": true
+                    }
+                }
+            ],
+            "makers": [
+                {
+                    "name": "@electron-forge/maker-squirrel",
+                    "config": {
+                        "name": "starship_battle"
+                    }
+                },
+                {
+                    "name": "@electron-forge/maker-zip",
+                    "platforms": [
+                        "darwin"
+                    ]
+                },
+                {
+                    "name": "@electron-forge/maker-deb",
+                    "config": {}
+                },
+                {
+                    "name": "@electron-forge/maker-rpm",
+                    "config": {}
+                }
+            ]
+        }
+    },
+    "dependencies": {
+        "adm-zip": "^0.4.13",
+        "custom-electron-titlebar": "^3.0.10",
+        "electron-dl": "^1.14.0",
+        "electron-prompt": "^1.3.1",
+        "electron-squirrel-startup": "^1.0.0",
+        "ip": "^1.1.5",
+        "tableify": "^1.1.0",
+        "update-electron-app": "^1.4.2"
+    },
+    "devDependencies": {
+        "@electron-forge/cli": "^6.0.0-beta.39",
+        "@electron-forge/maker-deb": "^6.0.0-beta.39",
+        "@electron-forge/maker-rpm": "^6.0.0-beta.39",
+        "@electron-forge/maker-squirrel": "^6.0.0-beta.39",
+        "@electron-forge/maker-zip": "^6.0.0-beta.39",
+        "@electron-forge/publisher-github": "^6.0.0-beta.39",
+        "electron": "5.0.5"
+    }
+}

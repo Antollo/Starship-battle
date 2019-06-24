@@ -4,7 +4,7 @@
         {
             "label": "Build with cmake and run",
             "type": "shell",
-            "command": "cmake . ; cmake --build . --config Release ; Start-Process -FilePath ./src/Release/starship_battle.exe -WorkingDirectory ./src/Release",
+            "command": "cmake . ; cmake --build . --config Release ; Start-Process -FilePath ./src/Release/starship_battle_game.exe -ArgumentList \"server\" -WorkingDirectory ./src/Release ; Start-Process -FilePath ./src/Release/starship_battle_game.exe -ArgumentList \"127.0.0.1\", \"1717\" -WorkingDirectory ./src/Release",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

@@ -11,21 +11,32 @@
 class Spaceship : public Object, public sf::Transformable
 {
 public:
-    static Spaceship* create(const std::string& type, const std::wstring& playerID)
+    static Spaceship* create(const std::string& type, const std::wstring& playerId)
     {
         if (type.empty()) throw std::runtime_error("Type of spaceship was empty.");
-        if (playerID.empty()) throw std::runtime_error("Commander ID was empty.");
-        objects.emplace_back(new Spaceship(type, playerID));
-        return dynamic_cast<Spaceship*>(objects.back().get());
+        if (playerId.empty()) throw std::runtime_error("Commander ID was empty.");
+        return dynamic_cast<Spaceship*>(objects.emplace(counter, new Spaceship(type, playerId)).first->second.get());
     }
-    const Object::typeId getTypeId() const noexcept override
+    const Object::TypeId getTypeId() const override
     {
-        return Object::typeId::Spaceship;
+        return Object::TypeId::Spaceship;
     }
-    sf::Vector2f getCenterPosition() noexcept
+    Vec2f getCenterPosition() const override
     {
-        body->GetMassData(&massData);
+        body->GetMassData(const_cast<b2MassData*>(&massData));
         return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+    }
+    float getReloadState()
+    {
+        return clock.getElapsedTime().asSeconds() / reload;
+    }
+    const float& getMaxHp()
+    {
+        return maxHp;
+    }
+    const float& getHp()
+    {
+        return hp;
     }
     std::vector<std::pair<Vec2f, Vec2f>> getEdges()
     {
@@ -39,8 +50,11 @@ public:
     }
     ~Spaceship() override
     {
-        (*Object::console) << Spaceship::playerIDs[getID()]
-        << L" was warped to HQ\n";
+        //TODO
+        //(*Object::console) << Spaceship::playerId
+        //<< L" was warped to HQ\n";
+		//if (spaceship == this) spaceship = nullptr;
+		if (getId() == thisPlayerId) thisPlayerId = -1;
         world.DestroyBody(body);
     }
     void process() override
@@ -61,40 +75,32 @@ public:
     bool forward, left, right, aim, shoot;
     Vec2f aimCoords;
 private:
-    Spaceship(const std::string& type, const std::wstring& playerID) : forward(false), left(false), right(false), aim(false), shoot(false)
+    Spaceship(const std::string& type, const std::wstring& newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1)) : forward(false), left(false), right(false), aim(false), shoot(false), playerId(newPlayerId)
     {
-        static_assert(sizeof(b2Vec2) == sizeof(Vec2f), "error");
-        static_assert(sizeof(sf::Vector2f) == sizeof(Vec2f), "error");
-
-        std::ifstream file(type + ".txt");
+        std::ifstream file(type + ".json");
         if (!file.good()) throw std::runtime_error("Informations about spaceship not found.");
-
-        counter++;
-        playerIDs.push_back(playerID);
+        json jsonObject = json::parse(file);
 
         b2BodyDef bodyDef;
         bodyDef.type = b2_dynamicBody;
-        file >> bodyDef.linearDamping;
-        file >> bodyDef.angularDamping;
+        bodyDef.linearDamping = jsonObject["linearDamping"].get<float>();
+        bodyDef.angularDamping = jsonObject["angularDamping"].get<float>();
         bodyDef.userData = this;
         bodyDef.position.x = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
         bodyDef.position.y = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
 
         body = world.CreateBody(&bodyDef);
 
-        std::size_t n;
-        file >> n;
-        std::vector<Vec2f> points(n);
-        for (auto& point : points)
-            file >> point.x >> point.y;
+        std::vector<Vec2f> points = jsonObject["points"].get<std::vector<Vec2f>>();// (n);
+        std::size_t n = points.size();
 
         b2PolygonShape shape;
         shape.Set(reinterpret_cast<b2Vec2*>(points.data()), n);
 
         b2FixtureDef fixtureDef;
-        file >> fixtureDef.density;
-        file >> fixtureDef.friction;
-        fixtureDef.filter.groupIndex = -counter; 
+        fixtureDef.density = jsonObject["density"].get<float>();
+        fixtureDef.friction = jsonObject["friction"].get<float>();
+        fixtureDef.filter.groupIndex = -getId(); 
         fixtureDef.shape = &shape;
         body->CreateFixture(&fixtureDef);
 
@@ -107,9 +113,12 @@ private:
         }
         polygon[n] = polygon[0];
 
-        file >> force >> torque >> reload >> hp;
-
-        std::string str;
+        force = jsonObject["force"].get<float>();
+        torque = jsonObject["torque"].get<float>();
+        reload = jsonObject["reload"].get<float>();
+        maxHp = hp = jsonObject["hp"].get<float>();
+        armor = jsonObject["armor"].get<float>();
+        /*std::string str;
         float x, y;
         file >> n;
         while (n--)
@@ -117,9 +126,21 @@ private:
             file >> str >> x >> y;
             turrets.emplace_back(str);
             turrets.back().setPosition(x * worldScale, y * worldScale);
+        }*/
+        for (auto& turret : jsonObject["turrets"])
+        {
+            turrets.emplace_back(turret["type"].get<std::string>());
+            turrets.back().setPosition(turret["x"].get<float>() * worldScale, turret["y"].get<float>() * worldScale);
         }
     }
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
+    {
+        states.transform *= getTransform();
+        target.draw(polygon, states);
+        for (const Turret& turret : turrets)
+            target.draw(turret, states);
+    }
+    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
     {
         states.transform *= getTransform();
         target.draw(polygon, states);
@@ -152,21 +173,17 @@ private:
         if (clock.getElapsedTime().asSeconds() >= reload)
         {
             for (Turret& turret : turrets)
-                turret.shoot(getTransform(), getRotation() / 180.f * pi, Vec2f::asVec2f(body->GetLinearVelocity()), -getID());
+                turret.shoot(getTransform(), getRotation() / 180.f * pi, Vec2f::asVec2f(body->GetLinearVelocity()), -getId());
             clock.restart();
         }
     }
-    inline int getID()
-    {
-        return -body->GetFixtureList()[0].GetFilterData().groupIndex;
-    }
+    std::wstring playerId;
     sf::VertexArray polygon;
     b2Body* body;
     b2MassData massData;
-    float force, torque, reload, hp;
+    float force, torque, reload, maxHp, hp, armor;
     std::vector<Turret> turrets;
     sf::Clock clock;
-    static std::vector<std::wstring> playerIDs;
     friend class Bot;
     friend class Cursor;
     friend class ContactListener;

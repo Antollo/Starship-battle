@@ -1,23 +1,32 @@
 #ifndef CURSOR_H_
 #define CURSOR_H_
 
+#include <sstream>
 #include "Object.h"
 #include "Spaceship.h"
 
-class Cursor : public Object, public sf::Transformable
+std::wstring to_wstring_with_precision(const float& value)
+{
+    std::wstringstream out;
+    out.precision(0);
+    out << std::fixed << value;
+    return out.str();
+}
+
+
+class Cursor : public sf::Drawable, public sf::Transformable
 {
 public:
-    static Cursor* create()
+    /*static Cursor* create()
     {
-        objects.emplace_back(new Cursor());
-        return dynamic_cast<Cursor*>(objects.back().get());
+        return dynamic_cast<Cursor*>(objects.emplace(counter, new Cursor()).first->second.get());
     }
-    const Object::typeId getTypeId() const noexcept override
+    const Object::TypeId getTypeId() const noexcept override
     {
-        return Object::typeId::Cursor;
-    }
-private:
-    Cursor()
+        return Object::TypeId::Cursor;
+    }*/
+
+    Cursor() : reloadState(0.f)
     {
         font.loadFromFile("UbuntuMono.ttf");
         text.setFont(font);
@@ -49,37 +58,47 @@ private:
         circle.setFillColor(sf::Color::Transparent);
         
     }
+    void setState(const float& newReloadState = 0.f, const int& hp = 0, const int& maxHp = 0)
+    {
+        reloadState = newReloadState;
+        if (hp)
+            hpState = L"Hp: "s + std::to_wstring(hp) + L" / "s + std::to_wstring(maxHp);
+        else
+            hpState = L""s;
+    }
+private:
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {
         Cursor& hack = const_cast<Cursor&>(*this);
         hack.setScale(target.getView().getSize().x/(float)target.getSize().x, target.getView().getSize().y/(float)target.getSize().y);
         sf::Vector2f mousePos = target.mapPixelToCoords(sf::Mouse::getPosition(*dynamic_cast<sf::RenderWindow*>(&target)));
         hack.setPosition(mousePos);
-        hack.text.setString(L"X: " + std::to_wstring(roundf(mousePos.x)) + L"\nY: " + std::to_wstring(roundf(mousePos.y)));
+        hack.text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)) + L"\n"s + hpState);
         states.transform = getTransform();
         target.draw(text, states);
         target.draw(polygon, states);
         target.draw(circle, states);
 
-        if (Object::spaceship != nullptr)
+
+        size_t reloaded = (size_t)std::min(reloadState * 32.f, 32.f);
+        for (size_t i = 0; i < reloaded; i++)
         {
-            size_t reloaded = (size_t)std::min(Object::spaceship->clock.getElapsedTime().asSeconds() / Object::spaceship->reload * 32.f, 32.f);
-            for (size_t i = 0; i < reloaded; i++)
-            {
-                hack.dots[i].color = sf::Color::White;
-            }
-            for (size_t i = reloaded; i < 32; i++)
-            {
-                hack.dots[i].color = sf::Color::Transparent;
-            }
+            hack.dots[i].color = sf::Color::White;
         }
+        for (size_t i = reloaded; i < 32; i++)
+        {
+            hack.dots[i].color = sf::Color::Transparent;
+        }
+
         target.draw(dots, states);
     }
     sf::Font font;
     sf::Text text;
+    std::wstring hpState;
     sf::CircleShape circle;
     sf::VertexArray polygon;
     sf::VertexArray dots;
+    float reloadState;
 };
 
 #endif
