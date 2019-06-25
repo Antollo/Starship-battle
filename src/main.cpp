@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
         {
             tick = 0;
             if(serverSide) {
-                std::cout << upEventCounter << " UpEvent received.\n";
+                std::cout << upEventCounter << " UpEvents received.\n";
                 upEventCounter = 0;
             }
             std::cout << std::flush;

@@ -303,6 +303,7 @@
     },
     "cSpell.words": [
         "cbegin",
-        "chrono"
+        "chrono",
+        "tableify"
     ]
 }

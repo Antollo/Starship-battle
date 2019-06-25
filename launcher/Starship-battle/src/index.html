@@ -109,15 +109,23 @@
     const { spawn, ChildProcess } = require('child_process');
     const { ipcRenderer, remote } = require('electron');
     const tableify = require('tableify');
+    const getJSON = require('get-json');
+    const semver = require('semver');
+
+    new customTitlebar.Titlebar({
+        backgroundColor: customTitlebar.Color.fromHex('#000000'),
+        menu: null
+    });
+
 
     function check() {
-        if (document.getElementById('log').childNodes.length <= 1000)
+        if (document.getElementById('log').childNodes.length <= 200)
             return;
         document.getElementById('log').removeChild(document.getElementById('log').firstChild);
     }
 
     function log(str) {
-        document.getElementById('log').insertAdjacentHTML('beforeend', '<div>' + str + '</div>');
+        document.getElementById('log').insertAdjacentHTML('beforeend', '<div class="pre-wrap">' + str + '</div>');
         check();
     }
 
@@ -139,30 +147,32 @@
         })
     }
 
-    new customTitlebar.Titlebar({
-        backgroundColor: customTitlebar.Color.fromHex('#000000'),
-        menu: null
-    });
-
-
-    ipcRenderer.send('download', {
-        url: 'https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src/artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017',
-        properties: {
-            directory: __dirname,
-            allowOverwrite: true
-        }
-    });
+    function download() {
+        log('Starting download.');
+        ipcRenderer.send('download', {
+            url: 'https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src/artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017',
+            properties: {
+                directory: __dirname,
+                allowOverwrite: true
+            }
+        });
+    }
 
     ipcRenderer.on('download progress', (event, progress) => {
         if (progress > 0 && progress < 1) {
-            log(`Downloading game: ${Math.round(progress * 100)}%`);
+            log(`Downloading: ${Math.round(progress * 100)}%`);
         }
     });
 
     ipcRenderer.on('download complete', (event, file) => {
-        log('Game ready');
+        log('Downloaded.');
         new AdmZip(file).extractAllTo(__dirname, true);
         fs.unlink(file, err => console.log(err));
+        log('Game is ready.');
+    });
+
+    ipcRenderer.on('log', (event, message) => {
+        log(message);
     });
 
 
@@ -271,6 +281,25 @@
     document.getElementById('log').style.height = `calc(100% - ${document.getElementById('buttons').offsetHeight + 16}px)`;
 
     log(`Launcher version: ${remote.app.getVersion()}`);
+
+    (async function () {
+        if (fs.existsSync(__dirname + '/config.json')) {
+            const local = require(__dirname + '/config.json').version;
+            log(`Game version: ${local}`);
+            const remote = (await getJSON('https://raw.githubusercontent.com/Antollo/Starship-battle/master/src/Release/config.json')).version;
+            log(`Latest game version: ${remote}`);
+            log('\n');
+            if (local == undefined || remote == undefined || semver.gte(remote, local)) {
+                log('Need to update the game.');
+                download();
+            } else {
+                log('Game is up to date.');
+            }
+        } else {
+            log('Need to download the game.');
+            download();
+        }
+    })();
 </script>
 
 </html>

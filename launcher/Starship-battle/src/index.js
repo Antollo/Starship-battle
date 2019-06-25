@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, autoUpdater } = require('electron');
 const { download } = require('electron-dl');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -16,6 +16,7 @@ const createWindow = () => {
         width: 800,
         height: 600,
         frame: false,
+        show: false,
         webPreferences: {
             nodeIntegration: true
         }
@@ -36,6 +37,10 @@ const createWindow = () => {
         // when you should delete the corresponding element.
         mainWindow = null;
     });
+
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+    })
 };
 
 // This method will be called when Electron has finished
@@ -64,16 +69,55 @@ app.on('activate', () => {
 // code. You can also put them in separate files and import them here.
 
 ipcMain.on('download', (event, info) => {
-    info.properties.onProgress = function(status) {
-        if (!Number.isFinite(status)) 
+    info.properties.onProgress = function (status) {
+        if (!Number.isFinite(status))
             return;
-        //console.log(status);
         mainWindow.webContents.send('download progress', status);
     }
     download(BrowserWindow.getFocusedWindow(), info.url, info.properties)
         .then(dl => mainWindow.webContents.send('download complete', dl.getSavePath()));
 });
 
-require('update-electron-app')({
+/*require('update-electron-app')({
     logger: require('electron-log')
+});*/
+
+const server = 'https://update.electronjs.org';
+let feed;
+if (process.platform == 'win32')
+    feed = `${server}/Antollo/Starship-battle/${process.platform}/${app.getVersion()}`;
+else
+    feed = `${server}/Antollo/Starship-battle/${process.platform}-${process.arch}/${app.getVersion()}`
+
+autoUpdater.setFeedURL(feed);
+
+autoUpdater.on('error', (err) => {
+    mainWindow.webContents.send('log', 'Error while checking launcher update.');
+    console.log('error', err);
+})
+
+autoUpdater.on('checking-for-update', () => {
+    console.log('checking-for-update');
 });
+
+autoUpdater.on('update-available', () => {
+    mainWindow.webContents.send('log', 'Launcher update is available, starting download.');
+    console.log('update-is-available');
+    autoUpdater.on('update-downloaded', () => {
+        console.log('update-downloaded');
+        autoUpdater.quitAndInstall();
+    });
+
+});
+
+autoUpdater.on('update-not-available', () => {
+    console.log('update not available');
+});
+
+setTimeout(() => {
+    autoUpdater.checkForUpdates();
+}, 1000);
+
+setInterval(() => {
+    autoUpdater.checkForUpdates();
+}, 10 * 60 * 1000);
