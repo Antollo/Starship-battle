@@ -298,8 +298,14 @@ int main(int argc, char *argv[])
                 }
             }
 
-            for (const auto& object : Object::objects)
-                object.second->process();
+            //for (const auto& object : Object::objects)
+            //    object.second->process();
+
+            for (auto i = Object::objects.begin(); i != Object::objects.end();)
+            {
+                auto j = i++;
+                j->second->process();
+            }
 
             Object::world.Step(delta, 8, 3);
 
