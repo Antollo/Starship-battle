@@ -70,7 +70,7 @@ private:
     {
         float angle  = Object::rng01(Object::mt) * pi * 2.f;
         float speed = Object::rng01(Object::mt) * 150.f;
-        m_particles[index].velocity = sf::Vector2f(std::cosf(angle) * speed, std::sinf(angle) * speed);
+        m_particles[index].velocity = sf::Vector2f(std::cos(angle) * speed, std::sin(angle) * speed);
         m_particles[index].lifetime = Object::rng01(Object::mt) * 2.5f;
         m_vertices[index].position = m_emitter;
         m_vertices[index].color = sf::Color::White;
@@ -81,4 +81,5 @@ private:
     sf::Vector2f m_emitter;
 };
 
-#endif PARTICICLESYSTEM_H_
+#endif
+

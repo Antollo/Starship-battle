@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include "Object.h"
+#include "Vec2f.h"
 
 class UpEvent {
 public:
@@ -10,7 +11,7 @@ public:
         Invalid, Forward, Left, Right, Aim, Shoot, AimCoords, Command
     };
     UpEvent(const Type& newType, const Object::ObjectId& newTargetId, const bool& newState)
-        : type(newType), targetId(newTargetId), state(newState), coords({0.f, 0.f}), command(L"#")
+        : type(newType), targetId(newTargetId), state(newState), coords(Vec2f(0.f, 0.f)), command(L"#")
     {
         assert(type != Type::AimCoords && type != Type::Command);
     }
@@ -22,13 +23,13 @@ public:
     }
 
     UpEvent(const Type& newType, const std::wstring& newCommand)
-        : type(newType), targetId(-1), state(false), coords({0.f, 0.f}), command(newCommand)
+        : type(newType), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(newCommand)
     {
         assert(type == Type::Command);
     }
 
     UpEvent()
-        : type(Type::Invalid), targetId(-1), state(false), coords({0.f, 0.f}), command(L"#") {}
+        : type(Type::Invalid), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(L"#") {}
     
     Type type;
     Object::ObjectId targetId;

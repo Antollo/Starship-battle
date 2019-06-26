@@ -48,7 +48,6 @@ public:
         correctOrigin();
         return *this;
     }
-    template<>
     Console& operator<<(const std::wstring& out)
     {
         textOutput.setString(textOutput.getString() + out);

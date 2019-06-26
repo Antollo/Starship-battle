@@ -53,11 +53,11 @@ private:
         for (auto& point : points)
         {
             angle = Object::rng01(mt) * pi * 2.f;
-            point.x = std::cosf(angle) * radius;
-            point.y = std::sinf(angle) * radius;
+            point.x = std::cos(angle) * radius;
+            point.y = std::sin(angle) * radius;
         }
         std::sort(points.begin(), points.end(), [](const auto& a, const auto& b){
-            return std::atan2f(a.y, a.x) < std::atan2f(b.y, b.x);
+            return std::atan2(a.y, a.x) < std::atan2(b.y, b.x);
         });
         
         b2PolygonShape shape;

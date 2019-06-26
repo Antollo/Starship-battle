@@ -165,7 +165,7 @@ private:
         for (Turret& turret : turrets)
         {
             targetRelativeToTurret = getInverseTransform().transformPoint(aimCoords) - turret.getPosition();
-            turret.setRotation(std::atan2f(targetRelativeToTurret.y,  targetRelativeToTurret.x) * 180.f / pi);
+            turret.setRotation(std::atan2(targetRelativeToTurret.y,  targetRelativeToTurret.x) * 180.f / pi);
         }
     }
     void onShoot() noexcept

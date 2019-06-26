@@ -39,7 +39,7 @@ public:
         {
             aim = true;
             aimCoords = newAimCoords;
-            float aimAngle = std::atan2f(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
+            float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
             while (aimAngle > pi) aimAngle -= 2.f * pi;
             while (aimAngle < -pi) aimAngle += 2.f * pi;
 

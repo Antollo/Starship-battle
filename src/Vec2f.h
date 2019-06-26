@@ -1,3 +1,6 @@
+#ifndef VEC2F_H_
+#define VEC2F_H_
+
 #include <cmath>
 #include <nlohmann/json.hpp>
 #include <SFML/Network.hpp>
@@ -48,7 +51,7 @@ public:
     }
     float getLength() const
     {
-        return std::sqrtf(x*x + y*y);
+        return std::sqrt(x*x + y*y);
     }
 };
 
@@ -73,3 +76,5 @@ inline sf::Packet& operator >>(sf::Packet& packet, Vec2f& vec)
 {
     return packet >> vec.x >> vec.y;
 }
+
+#endif

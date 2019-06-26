@@ -8,7 +8,9 @@ project(Starship_battle)
 
 if(MSVC)
     add_compile_options(/O2 /W3 /MT)
-	#/GL
+    #/GL
+else()
+    add_compile_options(-O3)
 endif()
 
 add_subdirectory(thirdparty/SFML)

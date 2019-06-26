@@ -1,7 +1,7 @@
 #ifndef GRID_H_
 #define GRID_H_
 
-#include <SFML\Graphics.hpp>
+#include <SFML/Graphics.hpp>
 
 class Grid : public sf::VertexArray
 {

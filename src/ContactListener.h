@@ -74,7 +74,7 @@ private:
             });
 
             Vec2f edge {it->first.x - it->second.x, it->first.y - it->second.y};
-            float angle = std::atan2f(impactVelocity.x*edge.y - impactVelocity.y*edge.x, impactVelocity.x*edge.x + impactVelocity.y*edge.y);
+            float angle = std::atan2(impactVelocity.x*edge.y - impactVelocity.y*edge.x, impactVelocity.x*edge.x + impactVelocity.y*edge.y);
             if (angle < 0.f) angle += 2.f *  pi;
             //float damage = std::round(impactVelocity.getSquaredLength() * bullet->massData.mass / 2.f * Object::rng025(Object::mt));
             float damage = std::roundf(bullet->damage * Object::rng025(Object::mt));
