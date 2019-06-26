@@ -26,7 +26,21 @@
         }
 
         .button:hover {
-            text-decoration: underline;
+            text-decoration-line: underline;
+        }
+
+        .button::after {
+            line-height: 16px;
+            display: inline-block;
+        }
+
+        .button[checked=true]::after {
+            content: ' ✓';
+        }
+
+        .button[checked=false]::after {
+            content: ' ✗';
+
         }
 
         #log {
@@ -74,232 +88,70 @@
         *::-webkit-scrollbar-thumb {
             background-color: white;
         }
+
+        input:focus,
+        select:focus,
+        textarea:focus,
+        button:focus {
+            outline: none;
+        }
+
+        input[type=text] {
+            border-radius: 0;
+            width: 256px;
+            padding: 2px;
+            border-top: 0;
+            border-right: 0;
+            border-left: 0;
+            border-bottom: 1.2px solid white;
+            min-height: 1em;
+            margin: 0 0 0 4px;
+        }
+
+        input[type=text]:focus {
+            background-color: white;
+            color: black;
+        }
     </style>
 </head>
 
 <body>
     <div class="parent">
-        <div id="buttons">
-            <div class="button" id="client">
-                start-client
+        <div id="controls">
+            <div id="buttons">
+                <div class="button" id="client" title="Starts client session, needs to connect to the server.">
+                    start-client
+                </div>
+                <div class="button" id="server" title="Starts server session.">
+                    start-server
+                </div>
+                <div class="button" id="local" title="Starts client and server, connect client to server.">
+                    start-local (play alone)
+                </div>
+                <div class="button" id="spaceships" title="Lists spaceships stats.">
+                    list-spaceships-stats
+                </div>
+                <div class="button" id="clear" title="Clear logs console.">
+                    clear-console
+                </div>
+                <div class="button" id="scroll" title="Clear logs console." checked="true">
+                    auto-scroll-console
+                </div>
             </div>
-            <div class="button" id="server">
-                start-server
+            <div id="input" hidden>
+                <label for="input-text"></label>
+                <input id="input-text" type="text">
+                <div class="button" id="ok" title="Starts client.">
+                    ok
+                </div>
             </div>
-            <div class="button" id="local">
-                start-local (play alone)
-            </div>
-            <div class="button" id="spaceships">
-                list-spaceships-stats
-            </div>
-            <div class="button" id="clear">
-                clear-console
-            </div>
+
         </div>
         <div id="log"></div>
     </div>
 </body>
 <script>
-    const customTitlebar = require('custom-electron-titlebar');
-    //const ngrok = require('ngrok');
-    const AdmZip = require('adm-zip');
-    const fs = require('fs');
-    const ip = require('ip');
-    const prompt = require('electron-prompt');
-    const { spawn, ChildProcess } = require('child_process');
-    const { ipcRenderer, remote } = require('electron');
-    const tableify = require('tableify');
-    const getJSON = require('get-json');
-    const semver = require('semver');
-
-    new customTitlebar.Titlebar({
-        backgroundColor: customTitlebar.Color.fromHex('#000000'),
-        menu: null
-    });
-
-
-    function check() {
-        if (document.getElementById('log').childNodes.length <= 200)
-            return;
-        document.getElementById('log').removeChild(document.getElementById('log').firstChild);
-    }
-
-    function log(str) {
-        document.getElementById('log').insertAdjacentHTML('beforeend', '<div class="pre-wrap">' + str + '</div>');
-        check();
-    }
-
-    function extendedLog(entity, str) {
-        document.getElementById('log')
-            .insertAdjacentHTML('beforeend', `<div class="pre-wrap"><div class="entity">${entity}, ${new Date().toLocaleTimeString()}</div>${str}</div>`);
-        check();
-    }
-
-    async function dialog(description) {
-        return await prompt({
-            title: '',
-            label: description,
-            value: '',
-            customStylesheet: __dirname + '\\index.css',
-            inputAttrs: {
-                type: 'text'
-            }
-        })
-    }
-
-    function download() {
-        log('Starting download.');
-        ipcRenderer.send('download', {
-            url: 'https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src/artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017',
-            properties: {
-                directory: __dirname,
-                allowOverwrite: true
-            }
-        });
-    }
-
-    ipcRenderer.on('download progress', (event, progress) => {
-        if (progress > 0 && progress < 1) {
-            log(`Downloading: ${Math.round(progress * 100)}%`);
-        }
-    });
-
-    ipcRenderer.on('download complete', (event, file) => {
-        log('Downloaded.');
-        new AdmZip(file).extractAllTo(__dirname, true);
-        fs.unlink(file, err => console.log(err));
-        log('Game is ready.');
-    });
-
-    ipcRenderer.on('log', (event, message) => {
-        log(message);
-    });
-
-
-    /*ngrok.connect({
-        authtoken: '4KDYDLCo66uAVMpN8cK3Y_3RA8hmrcjTFcG9Z81wPr7',
-        proto: 'tcp',
-        addr: 1717
-    }).then(function (url) {
-        log(url);
-    });*/
-    let client, server;
-
-    document.getElementById('server').addEventListener('click', async () => {
-        /*log('Server address: ' + await ngrok.connect({
-            authtoken: '4KDYDLCo66uAVMpN8cK3Y_3RA8hmrcjTFcG9Z81wPr7',
-            proto: 'tcp',
-            addr: 1717
-        }));*/
-        if (server instanceof ChildProcess)
-            server.kill();
-        log('Server ip: ' + ip.address());
-        server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, ['server'], {
-            cwd: __dirname + '/'
-        });
-
-        server.stdout.on('data', (data) => {
-            extendedLog('Server', data);
-        });
-        server.stderr.on('data', (data) => {
-            extendedLog('Server error', data);
-        });
-    });
-
-    document.getElementById('client').addEventListener('click', async () => {
-
-        /*var a = document.createElement('a')
-        a.href = (await dialog('Server url:')).replace('tcp', 'http');
-        log(a.hostname.toString());
-        log(a.port.toString());*/
-        if (client instanceof ChildProcess)
-            client.kill();
-        const ip = await dialog('Server ip:');
-        client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
-            /*a.hostname.toString(),
-            a.port.toString()*/
-            ip, '1717'
-        ], {
-                cwd: __dirname + '/'
-            });
-
-        client.stdout.on('data', (data) => {
-            extendedLog('Client', data);
-        });
-        client.stderr.on('data', (data) => {
-            extendedLog('Client error', data);
-        });
-    });
-
-    document.getElementById('local').addEventListener('click', () => {
-
-        if (server instanceof ChildProcess)
-            server.kill();
-        if (client instanceof ChildProcess)
-            client.kill();
-
-        server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, ['server'], {
-            cwd: __dirname + '/'
-        });
-
-        client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
-            '127.0.0.1',
-            '1717'
-        ], {
-                cwd: __dirname + '/'
-            });
-
-        server.stdout.on('data', (data) => {
-            extendedLog('Server', data);
-        });
-        server.stderr.on('data', (data) => {
-            extendedLog('Server error', data);
-        });
-
-        client.stdout.on('data', (data) => {
-            extendedLog('Client', data);
-        });
-        client.stderr.on('data', (data) => {
-            extendedLog('Client error', data);
-        });
-    });
-
-    document.getElementById('spaceships').addEventListener('click', async () => {
-        for (spaceship of require(__dirname + '/config.json').spaceships) {
-            const obj = { name: spaceship, ...require(`${__dirname}/${spaceship}.json`) };
-            extendedLog(`${__dirname}/${spaceship}.json`, tableify(obj));
-        }
-    });
-
-    document.getElementById('clear').addEventListener('click', async () => {
-        document.getElementById('log').innerHTML = '';
-    });
-
-    window.addEventListener('resize', () => {
-        document.getElementById('log').style.height = `calc(100% - ${document.getElementById('buttons').offsetHeight + 16}px)`;
-    });
-    document.getElementById('log').style.height = `calc(100% - ${document.getElementById('buttons').offsetHeight + 16}px)`;
-
-    log(`Launcher version: ${remote.app.getVersion()}`);
-
-    (async function () {
-        if (fs.existsSync(__dirname + '/config.json')) {
-            const local = require(__dirname + '/config.json').version;
-            log(`Game version: ${local}`);
-            const remote = (await getJSON('https://raw.githubusercontent.com/Antollo/Starship-battle/master/src/Release/config.json')).version;
-            log(`Latest game version: ${remote}`);
-            log('\n');
-            if (local == undefined || remote == undefined || semver.gte(remote, local)) {
-                log('Need to update the game.');
-                download();
-            } else {
-                log('Game is up to date.');
-            }
-        } else {
-            log('Need to download the game.');
-            download();
-        }
-    })();
+    require(__dirname + '/renderer.js')();
 </script>
 
 </html>

@@ -78,9 +78,6 @@ ipcMain.on('download', (event, info) => {
         .then(dl => mainWindow.webContents.send('download complete', dl.getSavePath()));
 });
 
-/*require('update-electron-app')({
-    logger: require('electron-log')
-});*/
 
 const server = 'https://update.electronjs.org';
 let feed;

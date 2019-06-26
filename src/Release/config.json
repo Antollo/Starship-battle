@@ -1,7 +1,7 @@
 {
-    "version": "0.1.18",
+    "version": "0.1.19",
     "executable": "starship_battle_game",
     "spaceships": [
-        "D", "T-3", "T-4", "T-4A", "V7"
+        "D", "T-3", "T-4", "T-4A", "V3", "V7"
     ]
 }

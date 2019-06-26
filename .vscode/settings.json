@@ -302,8 +302,11 @@
         "valarray": "cpp"
     },
     "cSpell.words": [
+        "beforeend",
         "cbegin",
         "chrono",
-        "tableify"
+        "custom",
+        "tableify",
+        "titlebar"
     ]
 }

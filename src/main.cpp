@@ -77,40 +77,44 @@ int main(int argc, char *argv[])
         Bot::create(CommandProcessor::converter.to_bytes(shipType));
         return L"print Bot is ready.\n"s;
     });
-    commandProcessor.bind(L"create-bots", [](std::wstring shipType) {
-        std::size_t i = 3;
-        while (i--) Bot::create("T-3");
-        i = 2;
-        while (i--) Bot::create("D");
-        i = 1;
-        while (i--) Bot::create("T-4");
-        i = 1;
-        while (i--) Bot::create("T-4A");
-        i = 1;
-        while (i--) Bot::create("V7");
-
+    commandProcessor.bind(L"create-bots", []() {
+        std::ifstream file("config.json");
+        if (!file.good()) throw std::runtime_error("config.json not found.");
+        json jsonObject = json::parse(file);
+        std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
+        for (const auto& name : spaceships)
+        {
+            Bot::create(name);
+        }
         return L"print Bots are ready.\n"s;
     });
     commandProcessor.bind(L"credits", [](std::wstring shipType, std::wstring pilotName) {
         return L"print "
-        L"SFML        - www.sfml-dev.org\n"
-        L"Box2D       - box2d.org\n"
-        L"Ubuntu Mono - https://fonts.google.com/specimen/Ubuntu+Mono\n"
-        L"freesound   - freesound.org/people/spaciecat/sounds/456779\n"
-        L"              freesound.org/people/Diboz/sounds/213925\n"
-        L"              freesound.org/people/ryansnook/sounds/110111\n"
-        L"              freesound.org/people/debsound/sounds/437602\n"s;
+        L"SFML          - www.sfml-dev.org\n"
+        L"Box2D         - box2d.org\n"
+        L"nlohmann/json - github.com/nlohmann/json\n"
+        L"Electron      - electronjs.org\n"
+        L"Ubuntu Mono   - fonts.google.com/specimen/Ubuntu+Mono\n"
+        L"freesound     - freesound.org/people/spaciecat/sounds/456779\n"
+        L"                freesound.org/people/Diboz/sounds/213925\n"
+        L"                freesound.org/people/ryansnook/sounds/110111\n"
+        L"                freesound.org/people/debsound/sounds/437602\n"s;
 
     });
     commandProcessor.bind(L"delete", [](std::wstring shipType, std::wstring pilotName) {
         return L"print Monika.chr deleted successfully.\n"s;
     });
     commandProcessor.bind(L"list-spaceships", [](std::wstring shipType, std::wstring pilotName) {
-        return L"print D\n"
-        L"T-3\n"
-        L"T-4\n"
-        L"T-4A\n"
-        L"V7\n"s;
+        std::wstring res = L"print "s;
+        std::ifstream file("config.json");
+        if (!file.good()) throw std::runtime_error("config.json not found.");
+        json jsonObject = json::parse(file);
+        std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
+        for (const auto& name : spaceships)
+        {
+            res += CommandProcessor::converter.from_bytes(name.c_str()) + L"\n"s;
+        }
+        return res;
     });
     commandProcessor.bind(L"beep", [](std::wstring shipType, std::wstring pilotName) {
         resourceManager::playSound("glitch.wav");
@@ -134,6 +138,7 @@ int main(int argc, char *argv[])
         L"    delete                              \n"
         L"    TODO: time, heal                    \n"
         L"    help                                \n"
+        L"    credits                             \n"
         L"    list-spaceships                     \n"s;
     });
     
