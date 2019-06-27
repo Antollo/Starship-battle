@@ -149,9 +149,12 @@ module.exports = async () => {
     });
 
     document.getElementById('spaceships').addEventListener('click', async () => {
-        for (spaceship of require(__dirname + '/config.json').spaceships) {
-            const obj = { name: spaceship, ...require(`${__dirname}/${spaceship}.json`) };
-            extendedLog(`${__dirname}\\${spaceship}.json`, tableify(obj));
+        for (spaceshipName of require(__dirname + '/config.json').spaceships) {
+            const spaceship = { type: 'spaceship', name: spaceshipName, ...require(`${__dirname}/${spaceshipName}.json`) };
+            extendedLog(`${__dirname}\\${spaceshipName}.json`, tableify(spaceship));
+            const turretName = spaceship.turrets[0].type;
+            const turret = { type: 'turret', name: turretName, ...require(`${__dirname}/${turretName}.json`) };
+            extendedLog(`${__dirname}\\${turretName}.json`, tableify(turret));
         }
     });
 

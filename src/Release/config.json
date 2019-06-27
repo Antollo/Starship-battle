@@ -1,6 +1,8 @@
 {
-    "version": "0.1.19",
+    "version": "0.1.25",
     "executable": "starship_battle_game",
+    "antialiasingLevel": 16,
+    "mouseScrollMultiplier": -1,
     "spaceships": [
         "D", "T-3", "T-4", "T-4A", "V3", "V7"
     ]

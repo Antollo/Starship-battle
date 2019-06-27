@@ -4,6 +4,7 @@
 #include <sstream>
 #include "Object.h"
 #include "Spaceship.h"
+#include "resourceManager.h"
 
 std::wstring to_wstring_with_precision(const float& value)
 {
@@ -28,8 +29,7 @@ public:
 
     Cursor() : reloadState(0.f)
     {
-        font.loadFromFile("UbuntuMono.ttf");
-        text.setFont(font);
+        text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
         text.setCharacterSize(18u);
         text.setFillColor(sf::Color::White);
         text.setOrigin(-64.f, (float)text.getCharacterSize());
@@ -62,7 +62,7 @@ public:
     {
         reloadState = newReloadState;
         if (hp)
-            hpState = L"Hp: "s + std::to_wstring(hp) + L" / "s + std::to_wstring(maxHp);
+            hpState = L"Hp: "s + std::to_wstring(hp) + L"/"s + std::to_wstring(maxHp);
         else
             hpState = L""s;
     }
@@ -73,7 +73,7 @@ private:
         hack.setScale(target.getView().getSize().x/(float)target.getSize().x, target.getView().getSize().y/(float)target.getSize().y);
         sf::Vector2f mousePos = target.mapPixelToCoords(sf::Mouse::getPosition(*dynamic_cast<sf::RenderWindow*>(&target)));
         hack.setPosition(mousePos);
-        hack.text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)) + L"\n"s + hpState);
+        hack.text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)));
         states.transform = getTransform();
         target.draw(text, states);
         target.draw(polygon, states);
@@ -92,7 +92,6 @@ private:
 
         target.draw(dots, states);
     }
-    sf::Font font;
     sf::Text text;
     std::wstring hpState;
     sf::CircleShape circle;

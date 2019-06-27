@@ -19,14 +19,13 @@ public:
     void process() override
     {
         Vec2f newAimCoords{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-        for (const auto& object : objects)
+        for (const auto& targetId : targets)
         {
-            if ((*object.second).getTypeId() == Object::TypeId::Spaceship)
-            {
-                if (getCenterPosition().getSquaredDistance(object.second->getCenterPosition())
-                < getCenterPosition().getSquaredDistance(newAimCoords))
-                    newAimCoords = object.second->getCenterPosition();
-            }
+            if (objects.count(targetId) == 0) continue;
+            //if (object.getTypeId() == Object::TypeId::Spaceship)
+            if (getCenterPosition().getSquaredDistance(objects[targetId]->getCenterPosition())
+            < getCenterPosition().getSquaredDistance(newAimCoords))
+                newAimCoords = objects[targetId]->getCenterPosition();
         }
 
         /*newAimCoords = std::min_element(objects.begin(), objects.end(), [this](const auto& a, const auto& b) {
@@ -77,11 +76,16 @@ public:
         }
         Spaceship::process();
     }
+    void target(const Object::ObjectId& id)
+    {
+        targets.push_back(id);
+    }
     ~Bot() override
     {
         //create(t, pID);
     }
 private:
+    std::vector<Object::ObjectId> targets;
     Bot(const std::string& type) : Spaceship(type)
     { }
 };

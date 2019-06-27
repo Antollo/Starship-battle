@@ -50,7 +50,7 @@ public:
                 if (listener.accept(*clients.back().first) == sf::Socket::Done)
                 {
                     selector.add(*clients.back().first);
-                    std::cout << "New client connected\n";
+                    std::cout << "New client connected.\n";
                 }
                 else
                 {
@@ -64,7 +64,15 @@ public:
                 {
                     lastClient = it;
                     it->second = true;
-                    return it->first->receive(packet);
+                    sf::Socket::Status status = it->first->receive(packet);
+                    if (status == sf::Socket::Disconnected)
+                    {
+                            std::cout << "Client disconnected.\n";
+                            selector.remove(*it->first);
+                            it->first->disconnect();
+                            clients.erase(it);
+                    }
+                    return status;
                 }
             }
         }

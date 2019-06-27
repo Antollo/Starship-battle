@@ -1,5 +1,7 @@
 # Starship battle
 
+[![https://ci.appveyor.com/api/projects/status/github/Antollo/Starship-battle?svg=true](https://ci.appveyor.com/api/projects/status/github/Antollo/Starship-battle?svg=true)](https://ci.appveyor.com/project/Antollo/Starship-battle)
+
 Two dimensional game with good physics and command line user interface.
 
 ![gif](https://6klyrw.am.files.1drv.com/y4mfIzUr-EFE6NMzC9YdTP9oke6DIIGS9nhERCnWK9xCCbKtil0C5IjAQH_oGh0An9QxXDobxa-Trtf5GCHiZi8RbFAx5fIpzYT_-Kdhjyim_og9fD54hzAySLZ387dxc7h2Zk36UZXwGEMwbZLpc5b7_ZcJausjb2sBUL0uMf5aqXGEfaUxcesjMpaipCF3zF5eVLhX1jZwxKh8Bgeg-_YQw)
@@ -7,6 +9,11 @@ Two dimensional game with good physics and command line user interface.
 ## I just want to play...
 
 Download game launcher [here](https://github.com/Antollo/Starship-battle/releases/latest). It will install itself, create shortcut on desktop, perform auto updates and update the game.
+
+### First time?
+
+Click `start-local (play alone)` in launcher to start the game. Type `create T-4A yourName` (where `T-4A` is spaceship name and `yourName` is pilot's name) and hit enter. Then type `create-bots` and attack them! 
+Control the ship with `W`, `A` and `D`, aim with right mouse button and fire with left mouse button! Use `help` command to learn more (e.g. how to list all spaceships names).
 
 _Not recommended_: Latest game executable is available [here](https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src\artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017).
 

@@ -74,6 +74,7 @@ public:
     class Player {
     public:
         Object::ObjectId id;
+        std::wstring playerId; 
         Vec2f coords;
         float reload;
         std::int32_t hp;
@@ -118,7 +119,7 @@ inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
     packet << (std::int32_t)ev.players.size();
     for(const DownEvent::Player& player : ev.players)
     {
-        packet << player.id << player.coords.x << player.coords.y << player.reload << player.hp << player.maxHp;
+        packet << player.id << player.playerId << player.coords << player.reload << player.hp << player.maxHp;
     }
     packet << ev.collision.x << ev.collision.y << ev.explosion << ev.message;
     return packet;
@@ -149,7 +150,7 @@ inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
     ev.players.resize(size);
     for(DownEvent::Player& player : ev.players)
     {
-        packet >> player.id >> player.coords.x >> player.coords.y >> player.reload >> player.hp >> player.maxHp;
+        packet >> player.id >> player.playerId >> player.coords >> player.reload >> player.hp >> player.maxHp;
     }
     packet >> ev.collision.x >> ev.collision.y >> ev.explosion >> ev.message;
     return packet;

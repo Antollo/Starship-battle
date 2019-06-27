@@ -4,10 +4,10 @@
     "force": 165,
     "torque": 70,
     "friction": 1,
-    "density": 5,
+    "density": 6,
     "reload": 1.1,
-    "hp": 620,
-    "armor": 70,
+    "hp": 680,
+    "armor": 75,
     "points": [
         {
             "x": 0,

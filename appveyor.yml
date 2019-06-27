@@ -1,6 +1,11 @@
 version: 0.1.{build}
 image:
     - Visual Studio 2017
+    - Ubuntu
+init:
+    - sh: sudo apt update
+    - sh: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 70 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - sh: sudo apt-get install -y libgl1-mesa-dev udev libudev-dev libopenal-dev libflac-dev libvorbis-dev libxrandr-dev libfreetype6-dev
 before_build:
     - git submodule update --init --recursive
     - cmake .

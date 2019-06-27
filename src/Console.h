@@ -6,6 +6,7 @@
 #include <queue>
 #include <future>
 #include "Object.h"
+#include "resourceManager.h"
 
 class Console : public sf::Drawable
 {
@@ -22,15 +23,17 @@ public:
         std::wcin.set_rdbuf(s.rdbuf());
         wcinFuture.wait();
     }*/
-    Console() : active(true)
+    Console() : active(true), history({L""}), historyIterator(0)
     {
-        font.loadFromFile("UbuntuMono.ttf");
-        textOutput.setFont(font);
-        textInput.setFont(font);
+        textOutput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
+        textInput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
+        notificationOutput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
         textOutput.setCharacterSize(18);
         textInput.setCharacterSize(18);
+        notificationOutput.setCharacterSize(18);
         textOutput.setFillColor(sf::Color::White);
         textInput.setFillColor(sf::Color::White);
+        notificationOutput.setFillColor(sf::Color::White);
         textInput.setString(">_");
         correctOrigin();
         /*wcinFuture = std::async(std::launch::async, []()
@@ -44,6 +47,7 @@ public:
     Console& operator<<(const T& out)
     {
         textOutput.setString(textOutput.getString() + std::to_wstring(out));
+        notificationOutput.setString(std::to_wstring(out));
         std::wcout << std::to_wstring(out);
         correctOrigin();
         return *this;
@@ -51,6 +55,7 @@ public:
     Console& operator<<(const std::wstring& out)
     {
         textOutput.setString(textOutput.getString() + out);
+        notificationOutput.setString(out);
         std::wcout << out;
         correctOrigin();
         return *this;
@@ -58,6 +63,7 @@ public:
     Console& operator<<(const wchar_t* out)
     {
         textOutput.setString(textOutput.getString() + out);
+        notificationOutput.setString(out);
         std::wcout << out;
         correctOrigin();
         return *this;
@@ -100,7 +106,7 @@ public:
     {
         return Object::TypeId::Console;
     }*/
-    const bool isTextEntered() const noexcept
+    bool isTextEntered() const noexcept
     {
         return !entered.empty() /*|| wcinFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready*/;
     }
@@ -108,22 +114,34 @@ public:
     {
         switch (c)
         {
-            case '\n':
-            case '\r':
+            case L'\n':
+            case L'\r':
                 if (!active) break;
                 entered.push(textInput.getString().substring(1, textInput.getString().getSize() - 2));
+                history.insert(history.begin() + 1, entered.back());
                 textOutput.setString(textOutput.getString() + entered.back() + '\n');
                 std::wcout << (entered.back() + L"\n");
-                textInput.setString(">_");
+                textInput.setString(L">_");
                 correctOrigin();
                 break;
-            case '\b':
+            case L'\b':
                 if (!active) break;
                 if (textInput.getString().getSize() > 2)
                     textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 2) + '_');
                 break;
-            case '\t':
+            case L'\t':
                 active = !active;
+                break;
+            case L']':
+                if (!active) break;
+                historyIterator++;
+                historyIterator %= history.size();
+                textInput.setString(L">"s + history[historyIterator] + L"_"s);
+                break;
+            case L'[':
+                if (!active) break;
+                if (historyIterator) historyIterator--;
+                textInput.setString(L">"s + history[historyIterator] + L"_"s);
                 break;
             default:
                 if (!active) break;
@@ -134,9 +152,19 @@ public:
 private:
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {
-        sf::View temp = target.getView();
+        static sf::View temp;
+        static sf::Vector2f pos(18.f, 0.f);
+
+        temp = target.getView();
         target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
-        sf::Vector2f pos(18, -18 + target.getView().getSize().y);
+        pos.y = -18 + target.getView().getSize().y;
+        if (!active) 
+        {
+            notificationOutput.setPosition(pos);
+            target.draw(notificationOutput, states);
+            target.setView(temp);
+            return;
+        }
         textOutput.setPosition(pos);
         textInput.setPosition(pos);
         target.draw(textOutput, states);
@@ -145,12 +173,14 @@ private:
     }
     inline void correctOrigin() noexcept
     {
+        notificationOutput.setOrigin(0, (float) notificationOutput.getCharacterSize() * (1 + std::count(notificationOutput.getString().begin(), notificationOutput.getString().end(), '\n')));
         textOutput.setOrigin(0, (float) textOutput.getCharacterSize() * (1 + std::count(textOutput.getString().begin(), textOutput.getString().end(), '\n')));
         textInput.setOrigin(0, (float) textInput.getCharacterSize());
     }
-    sf::Font font;
-    mutable sf::Text textOutput, textInput;
+    mutable sf::Text textOutput, notificationOutput, textInput;
     std::queue<std::wstring> entered;
+    std::deque<std::wstring> history;
+    std::size_t historyIterator;
     //std::future<std::wstring> wcinFuture;
     bool active;
 };

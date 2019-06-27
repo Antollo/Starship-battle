@@ -5,7 +5,6 @@
 #include <utility>
 #include <stdexcept>
 #include "Object.h"
-#include "Console.h"
 
 class Rock : public Object, public sf::Transformable
 {
@@ -13,6 +12,10 @@ public:
     static Rock* create()
     {
         return dynamic_cast<Rock*>(objects.emplace(counter, new Rock()).first->second.get());
+    }
+    static Rock* create(const sf::VertexArray& newPolygon, b2Body* newBody)
+    {
+        return dynamic_cast<Rock*>(objects.emplace(counter, new Rock(newPolygon, newBody)).first->second.get());
     }
     const Object::TypeId getTypeId() const override
     {
@@ -78,6 +81,11 @@ private:
             polygon[i].color = sf::Color::White;
         }
         polygon[n] = polygon[0];
+    }
+    Rock(const sf::VertexArray& newPolygon, b2Body* newBody)
+        : polygon(newPolygon), body(newBody)
+    {
+        body->SetUserData(this);
     }
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {

@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include "Object.h"
 #include "Turret.h"
-#include "Console.h"
+#include "Rock.h"
 
 class Spaceship : public Object, public sf::Transformable
 {
@@ -38,6 +38,10 @@ public:
     {
         return hp;
     }
+    const std::wstring& getPlayerId()
+    {
+        return playerId;
+    }
     std::vector<std::pair<Vec2f, Vec2f>> getEdges()
     {
         std::vector<std::pair<Vec2f, Vec2f>> ret(polygon.getVertexCount() - 1);
@@ -50,12 +54,14 @@ public:
     }
     ~Spaceship() override
     {
-        //TODO
         //(*Object::console) << Spaceship::playerId
         //<< L" was warped to HQ\n";
 		//if (spaceship == this) spaceship = nullptr;
-		if (getId() == thisPlayerId) thisPlayerId = -1;
-        world.DestroyBody(body);
+		//if (getId() == thisPlayerId) thisPlayerId = -1;
+
+        //world.DestroyBody(body);
+        body->SetUserData(nullptr);
+        Rock::create(polygon, body);
     }
     void process() override
     {
@@ -88,6 +94,7 @@ private:
         bodyDef.userData = this;
         bodyDef.position.x = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
         bodyDef.position.y = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
+        bodyDef.angle = rng01(mt) * 2.f * pi;
 
         body = world.CreateBody(&bodyDef);
 
@@ -187,6 +194,7 @@ private:
     friend class Bot;
     friend class Cursor;
     friend class ContactListener;
+    friend class RenderSerializer;
 };
 
 #endif

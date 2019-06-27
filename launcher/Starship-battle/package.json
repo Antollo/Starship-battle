@@ -1,7 +1,7 @@
 {
     "name": "starship-battle",
     "productName": "starship-battle",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "description": "Starship battle game launcher",
     "main": "src/index.js",
     "scripts": {

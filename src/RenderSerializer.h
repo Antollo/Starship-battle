@@ -27,14 +27,15 @@ public:
     {
         for (const auto& it : Object::objects)
         {
-            if (it.second->getTypeId() == Object::TypeId::Spaceship)
+            if (it.second->getTypeId() == Object::TypeId::Spaceship || it.second->getTypeId() == Object::TypeId::Bot)
             {
                 downEvent.players.push_back({
                     it.first,
+                    dynamic_cast<Spaceship&>(*it.second).playerId,
                     it.second->getCenterPosition(),
-                    dynamic_cast<Spaceship&>(*it.second.get()).getReloadState(),
-                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second.get()).getHp(),
-                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second.get()).getMaxHp()
+                    dynamic_cast<Spaceship&>(*it.second).getReloadState(),
+                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second).hp,
+                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second).maxHp
                 });
             }
         }

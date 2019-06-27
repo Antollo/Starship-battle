@@ -21,8 +21,7 @@ int main(int argc, char *argv[])
 {
     //for (size_t i = 0; i < argc; i++)
     //    std::cout<<argv[i]<<std::endl;
-    //std::ofstream sfmlLog("sfml-log.txt");
-    //sf::err().rdbuf(sfmlLog.rdbuf());
+
     static_assert(sizeof(b2Vec2) == sizeof(Vec2f));
     static_assert(sizeof(sf::Vector2f) == sizeof(Vec2f));
     if (argc < 2)
@@ -53,16 +52,35 @@ int main(int argc, char *argv[])
     UpEvent upEvent;
     std::queue<DownEvent> downEvents;
 
+
     sf::TcpSocket socket; //Client
+    sf::Text text;    
 	if (!serverSide)
-        socket.connect(arg, std::stoi((std::string) argv[2]));
+    {
+        int port = std::stoi(std::string(argv[2]));
+        if (socket.connect(arg, port) != sf::Socket::Status::Done)
+        {
+            if (socket.connect(arg, port) != sf::Socket::Status::Done)
+            {
+                std::cerr << "Could not connect with " << arg << ":" << port << ".\n";
+                std::cerr << "Please try again later." << std::flush;
+                return 1;
+            }
+        }
+        text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
+        text.setCharacterSize(18);
+        text.setFillColor(sf::Color::White);
+    }
     Client client(socket);
     DownEvent downEvent, downEventDirectDraw;
-    bool directDrew = false;
-    const DownEvent::Player* pl = nullptr; 
+    bool directDrew = false, alive = false, rightMouseButtonDown = false;
+    decltype(Object::objects)::iterator i, j;
+    float m = 1.f;
+    Vec2f scale;
     std::queue<UpEvent> upEvents;
 
     sf::RenderWindow window; //Graphic window
+    float fps = 0.f;
     //sf::RenderTexture renderTexture;
     //sf::Shader shader;
     //sf::Sprite processed;
@@ -167,12 +185,22 @@ int main(int argc, char *argv[])
 
     if (!serverSide)
     {
+        int antialiasingLevel = 16;
+        std::ifstream file("config.json");
+        if (file.good())
+        {
+            json jsonObject = json::parse(file);
+            m = jsonObject["mouseScrollMultiplier"].get<float>();
+            antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
+        }
+        
         resourceManager::playSound("glitch.wav");
-        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, 16, 1, 1, 0, false));
+        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
         //renderTexture.create(window.getSize().x, window.getSize().y, sf::ContextSettings(0, 0, 16, 1, 1, 0, false));
         window.setVerticalSyncEnabled(true);
         window.setMouseCursorVisible(false);
-        window.requestFocus();	
+        window.requestFocus();
+        window.setView({{0.f, 0.f}, window.getView().getSize()});
         //processedTexture.create(window.getSize().x, window.getSize().y);
         //processed.setTexture(processedTexture);
         /*if (!shader.loadFromFile("crt-geom.vert", "crt-geom.frag"))
@@ -192,8 +220,14 @@ int main(int argc, char *argv[])
             if (event.type == sf::Event::Closed)
                 window.close();
             if (event.type == sf::Event::KeyPressed)
+            {
                 if (event.key.code == sf::Keyboard::Escape)
                     window.close();
+                else if (event.key.code == sf::Keyboard::Up)
+                    console.put(L']');
+                else if (event.key.code == sf::Keyboard::Down)
+                    console.put(L'[');
+            }
             if (event.type == sf::Event::TextEntered)
                 console.put((wchar_t)event.text.unicode);
             if (event.type == sf::Event::Resized)
@@ -201,11 +235,11 @@ int main(int argc, char *argv[])
             if (event.type == sf::Event::MouseWheelScrolled)
             {
                 sf::View view = window.getView();
-                if (event.mouseWheelScroll.delta < 0.f && view.getSize().x/(float)window.getSize().x + view.getSize().y/(float)window.getSize().y < 0.25f)
+                if (event.mouseWheelScroll.delta*m < 0.f && view.getSize().x/(float)window.getSize().x + view.getSize().y/(float)window.getSize().y < 0.25f)
                     break;
-                if (event.mouseWheelScroll.delta > 0.f && view.getSize().x/(float)window.getSize().x + view.getSize().y/(float)window.getSize().y > 32.f)
+                if (event.mouseWheelScroll.delta*m > 0.f && view.getSize().x/(float)window.getSize().x + view.getSize().y/(float)window.getSize().y > 32.f)
                     break;
-                view.zoom((event.mouseWheelScroll.delta > 0.f) * 1.2f + (event.mouseWheelScroll.delta < 0) * 0.8f);
+                view.zoom((event.mouseWheelScroll.delta*m > 0.f) * 1.2f + (event.mouseWheelScroll.delta*m < 0) * 0.8f);
                 window.setView(view);
             }
             //Player control events
@@ -235,18 +269,19 @@ int main(int argc, char *argv[])
                     switch (event.mouseButton.button)
                     {
                         case sf::Mouse::Button::Right:
+                            rightMouseButtonDown = ev;
                             upEvents.emplace(UpEvent::Type::Aim, Object::thisPlayerId, ev);
                             break;
                         case sf::Mouse::Button::Left:
                             upEvents.emplace(UpEvent::Type::Shoot, Object::thisPlayerId, ev);
                             break;
-                        default:
+                        /*default:
                             upEvents.emplace(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y})));
-                            break;
+                            break;*/
                     }
                 }
-                if (event.type == sf::Event::MouseMoved)
-                    upEvents.emplace(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y})));
+                /*if (event.type == sf::Event::MouseMoved)
+                    upEvents.emplace(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y})));*/
             }
         }
 
@@ -300,10 +335,9 @@ int main(int argc, char *argv[])
 
             //for (const auto& object : Object::objects)
             //    object.second->process();
-
-            for (auto i = Object::objects.begin(); i != Object::objects.end();)
+            for (i = Object::objects.begin(); i != Object::objects.end();)
             {
-                auto j = i++;
+                j = i++;
                 j->second->process();
             }
 
@@ -332,6 +366,9 @@ int main(int argc, char *argv[])
                 upEvents.emplace(UpEvent::Type::Command, console.get());
                 //console << commandProcessor.call(console.get());
 
+            if (rightMouseButtonDown)
+                    upEvents.emplace(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
+                    
             if (upEvents.empty())
                 upEvents.emplace();
 
@@ -391,17 +428,29 @@ int main(int argc, char *argv[])
             }
 
             window.clear(sf::Color::Black);
-            pl = downEventDirectDraw.findPlayer(Object::thisPlayerId);
-            if (pl == nullptr)
+
+            alive = false;
+            for (const auto& player : downEventDirectDraw.players)
+            {
+                if (player.id == Object::thisPlayerId)
+                {
+                    window.setView({player.coords, window.getView().getSize()});
+                    cursor.setState(player.reload, player.hp, player.maxHp);
+                    scale = {window.getView().getSize().x/(float)window.getSize().x, window.getView().getSize().y/(float)window.getSize().y};
+                    alive = true;
+                }
+                text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
+                text.setPosition(player.coords.x, player.coords.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
+                text.setScale(scale);
+                window.draw(text);
+
+            }
+            if (!alive)
             {
                 Object::thisPlayerId = -1;
-                window.setView({{0.f, 0.f}, window.getView().getSize()});
+                //window.setView({{0.f, 0.f}, window.getView().getSize()});
                 cursor.setState();
-            }
-            else
-            {
-                window.setView({pl->coords, window.getView().getSize()});
-                cursor.setState(pl->reload, pl->hp, pl->maxHp);
+                scale = {window.getView().getSize().x/(float)window.getSize().x, window.getView().getSize().y/(float)window.getSize().y};
             }
             
             for (const auto& polygon : downEventDirectDraw.polygons)
@@ -410,6 +459,12 @@ int main(int argc, char *argv[])
             }
 
             particleSystem.update(delta);
+
+            fps = (2.f * fps + 1.f/delta)/3.f;
+            text.setString(L"Fps: "s + std::to_wstring((int)std::roundf(fps)));
+            text.setScale(scale);
+            text.setPosition(window.mapPixelToCoords({(int) window.getSize().x - 80, 18}));
+            window.draw(text);
 
             window.draw(grid);
             window.draw(cursor);

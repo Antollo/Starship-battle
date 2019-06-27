@@ -9,5 +9,6 @@
 namespace resourceManager
 {
     void playSound(const std::string& name);
+    const sf::Font& getFont(const std::string& name);
 }
 #endif /* !RESOURSEMANAGER_H_ */

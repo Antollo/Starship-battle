@@ -20,41 +20,54 @@ private:
         Bullet* bullet = nullptr;
 
         void* bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
-        if (bodyUserData)
+        if (bodyUserData != nullptr)
         {
-            switch(static_cast<Object*>(bodyUserData)->getTypeId())
+            if (bodyUserData)
             {
-            case Object::TypeId::Bullet:
-                bullet = static_cast<Bullet*>(bodyUserData);
-                break;
-            case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
-            case Object::TypeId::Bot:
-                spaceship = static_cast<Spaceship*>(bodyUserData);
-                break;
-            case Object::TypeId::Rock:
-                //resourceManager::playSound("stone.wav");
-            default:
-                break;
+                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                {
+                case Object::TypeId::Bullet:
+                    bullet = static_cast<Bullet*>(bodyUserData);
+                    break;
+                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
+                case Object::TypeId::Bot:
+                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    break;
+                case Object::TypeId::Rock:
+                    //resourceManager::playSound("stone.wav");
+                default:
+                    break;
+                }
             }
         }
+
         bodyUserData = contact->GetFixtureB()->GetBody()->GetUserData();
-        if (bodyUserData)
+        if (bodyUserData != nullptr)
         {
-            switch(static_cast<Object*>(bodyUserData)->getTypeId())
+            if (bodyUserData)
             {
-            case Object::TypeId::Bullet:
-                bullet = static_cast<Bullet*>(bodyUserData);
-                break;
-            case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
-            case Object::TypeId::Bot:
-                spaceship = static_cast<Spaceship*>(bodyUserData);
-                break;
-            case Object::TypeId::Rock:
-                //resourceManager::playSound("stone.wav");
-            default:
-                break;
+                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                {
+                case Object::TypeId::Bullet:
+                    bullet = static_cast<Bullet*>(bodyUserData);
+                    break;
+                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
+                case Object::TypeId::Bot:
+                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    break;
+                case Object::TypeId::Rock:
+                    //resourceManager::playSound("stone.wav");
+                default:
+                    break;
+                }
             }
         }
+
+        if (spaceship != nullptr)
+            spaceship->contacts++;
+        if (bullet != nullptr)
+            bullet->contacts++;
+
         if (spaceship != nullptr && bullet != nullptr)
         {
             b2WorldManifold worldManifold;
@@ -99,6 +112,11 @@ private:
                     downEvents.emplace(DownEvent::Type::Message);
                     downEvents.back().message = spaceship->playerId + L" was warped to HQ\n";
                 }
+
+                if (spaceship->getTypeId() == Object::TypeId::Bot)
+                {
+                    dynamic_cast<Bot*>(spaceship)->target(bullet->getId());
+                }
             }
             else
             {
@@ -119,10 +137,57 @@ private:
   
     void EndContact(b2Contact* contact)
     {
-        //std::cout<<"end\n";
-        //void* bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
-        //if (bodyUserData)
-        //    std::cout<<"end\n";
+        Spaceship* spaceship = nullptr;
+        Bullet* bullet = nullptr;
+
+        void* bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
+        if (bodyUserData != nullptr)
+        {
+            if (bodyUserData)
+            {
+                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                {
+                case Object::TypeId::Bullet:
+                    bullet = static_cast<Bullet*>(bodyUserData);
+                    break;
+                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
+                case Object::TypeId::Bot:
+                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    break;
+                case Object::TypeId::Rock:
+                    //resourceManager::playSound("stone.wav");
+                default:
+                    break;
+                }
+            }
+        }
+
+        bodyUserData = contact->GetFixtureB()->GetBody()->GetUserData();
+        if (bodyUserData != nullptr)
+        {
+            if (bodyUserData)
+            {
+                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                {
+                case Object::TypeId::Bullet:
+                    bullet = static_cast<Bullet*>(bodyUserData);
+                    break;
+                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
+                case Object::TypeId::Bot:
+                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    break;
+                case Object::TypeId::Rock:
+                    //resourceManager::playSound("stone.wav");
+                default:
+                    break;
+                }
+            }
+        }
+
+        if (spaceship != nullptr)
+            spaceship->contacts--;
+        if (bullet != nullptr)
+            bullet->contacts--;
     }
     std::queue<DownEvent>& downEvents;
 };

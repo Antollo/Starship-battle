@@ -53,6 +53,14 @@ public:
     {
         return std::sqrt(x*x + y*y);
     }
+    Vec2f operator +(const Vec2f& v) const
+    {
+        return {x + v.x, y + v.y};
+    }
+    Vec2f operator -(const Vec2f& v) const
+    {
+        return {x - v.x, y - v.y};
+    }
 };
 
 inline void to_json(json& j, const Vec2f& vec) {
