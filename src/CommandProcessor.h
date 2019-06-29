@@ -9,11 +9,16 @@
 #include <locale>
 #include <codecvt>
 #include <memory>
+#include <type_traits>
 #include "Console.h"
 
 //using ArgsText = std::wstring;
 //using ArgsStream = std::basic_stringstream<ArgsText::value_type>;
 
+inline sf::Packet& operator >>(std::wstringstream& lhs, std::wstringstream& rhs)
+{
+    rhs << lhs.rdbuf(); 
+}
 class CallableBase
 {
 public:
@@ -32,7 +37,7 @@ public:
     template<std::size_t... Is>
     std::wstring call(std::wstringstream& argsStream, std::index_sequence<Is...>) const
     {
-        std::tuple<Args...> t;
+        std::tuple<std::remove_reference_t<Args>...> t;
         // Trick from: https://stackoverflow.com/questions/6245735/pretty-print-stdtuple
         using swallow = int[];
         (void)swallow{0, (void(argsStream >> std::get<Is>(t)), 0)...};
@@ -85,12 +90,23 @@ public:
     template <class T>
     void bind(const std::wstring& key, T&& callback)
     {
-        map[key] = std::unique_ptr<CallableBase>(new Callable(std::function(callback)));
+        map.emplace(key, new Callable(std::function(callback)));
+    }
+    template <class T>
+    void job(T&& callback)
+    {
+        jobs.emplace_back(new Callable(std::function(callback)));
+    }
+    void alias(const std::wstring& alias, const std::wstring& key)
+    {
+        map.emplace(alias, new Callable(std::function([this, key] (std::wstringstream& args) {
+            return call(key, args);
+        })));
     }
     std::wstring call(const std::wstring& key, std::wstringstream& args)
     {
         if (map.count(key)) 
-            return map[key]->operator()(args);
+            return (*map[key])(args);
         return L"print " + key + L"-error: Command not found.\n"
         + L"Use 'help' to get help.\n";        ;
     }
@@ -110,9 +126,21 @@ public:
             + L"Use 'help-" + key + L"' to get help.\n";
         }
     }
+    void processJobs()
+    {
+        inputsStream.clear();
+        for (it = jobs.begin(); it != jobs.end();)
+        {
+            jt = it++;
+            if ((**jt)(inputsStream).empty())
+                jobs.erase(jt);
+        }
+    }
     static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
 private:
     std::map<std::wstring, std::unique_ptr<CallableBase>> map;
+    std::list<std::unique_ptr<CallableBase>> jobs;
+    std::list<std::unique_ptr<CallableBase>>:: iterator it, jt;
     std::wstringstream inputsStream;
 };
 

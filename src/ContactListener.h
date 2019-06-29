@@ -63,10 +63,6 @@ private:
             }
         }
 
-        if (spaceship != nullptr)
-            spaceship->contacts++;
-        if (bullet != nullptr)
-            bullet->contacts++;
 
         if (spaceship != nullptr && bullet != nullptr)
         {
@@ -136,59 +132,7 @@ private:
     }
   
     void EndContact(b2Contact* contact)
-    {
-        Spaceship* spaceship = nullptr;
-        Bullet* bullet = nullptr;
-
-        void* bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
-        if (bodyUserData != nullptr)
-        {
-            if (bodyUserData)
-            {
-                switch(static_cast<Object*>(bodyUserData)->getTypeId())
-                {
-                case Object::TypeId::Bullet:
-                    bullet = static_cast<Bullet*>(bodyUserData);
-                    break;
-                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
-                case Object::TypeId::Bot:
-                    spaceship = static_cast<Spaceship*>(bodyUserData);
-                    break;
-                case Object::TypeId::Rock:
-                    //resourceManager::playSound("stone.wav");
-                default:
-                    break;
-                }
-            }
-        }
-
-        bodyUserData = contact->GetFixtureB()->GetBody()->GetUserData();
-        if (bodyUserData != nullptr)
-        {
-            if (bodyUserData)
-            {
-                switch(static_cast<Object*>(bodyUserData)->getTypeId())
-                {
-                case Object::TypeId::Bullet:
-                    bullet = static_cast<Bullet*>(bodyUserData);
-                    break;
-                case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
-                case Object::TypeId::Bot:
-                    spaceship = static_cast<Spaceship*>(bodyUserData);
-                    break;
-                case Object::TypeId::Rock:
-                    //resourceManager::playSound("stone.wav");
-                default:
-                    break;
-                }
-            }
-        }
-
-        if (spaceship != nullptr)
-            spaceship->contacts--;
-        if (bullet != nullptr)
-            bullet->contacts--;
-    }
+    { }
     std::queue<DownEvent>& downEvents;
 };
 

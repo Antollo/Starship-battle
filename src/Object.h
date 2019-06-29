@@ -49,11 +49,11 @@ public:
 	virtual const void consumeUpdateState(const UpdateState& state) const noexcept = 0;*/
 	virtual const TypeId getTypeId() const { return TypeId::Invalid; };
     virtual Vec2f getCenterPosition() const = 0;
-    Object() : destroy(false), id(++counter), contacts(0) {};
+    Object() : destroy(false), id(++counter) {};
     virtual ObjectId getId() { return id; }
     virtual void process()
     {
-        if (destroy && contacts <= 0) onDestroy();
+        if (destroy) onDestroy();
     }
     bool destroy;
     static int counter;
@@ -67,9 +67,7 @@ public:
     static constexpr float worldLimits = 12000.f;
 	virtual ~Object() { }
 private:
-    friend class ContactListener;
     ObjectId id;
-    int contacts;
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept = 0;
     
 	void onDestroy()

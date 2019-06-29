@@ -50,7 +50,8 @@ Run:
 
 ```
 cd src/Release
-./starship_battle_game
+./starship_battle_game server
+./starship_battle_game 127.0.0.1 1717
 ```
 
 ### Launcher
@@ -60,6 +61,7 @@ Works with `npm 5.6.0` or newer.
 ```
 cd launcher/Starship-battle
 npm install
+npm install -g electron-forge
 electron-forge start
 ```
 

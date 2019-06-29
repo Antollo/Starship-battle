@@ -82,6 +82,29 @@ module.exports = async () => {
     let client, server;
 
     document.getElementById('server').addEventListener('click', async () => {
+
+        /*const url = await new Promise((resolve, reject) => {
+            if (ssh instanceof ChildProcess)
+                ssh.kill();
+            ssh = spawn('ssh', ['-R', '0:localhost:1717', 'serveo.net']);
+            ssh.stdout.on('data', (data) => {
+                console.log(data.toString());
+                stripAnsi(data.toString()).split(' ').forEach((word) => {
+                    if (word.match(/serveo.net:[0-9]+/g)) {
+                        console.log(word);
+                        log(`Server address: ${word}`);
+                        resolve(word);
+                    };
+                });
+            });
+        });*/
+
+        /*log('Server address: ' + await ngrok.connect({
+            authtoken: '4KDYDLCo66uAVMpN8cK3Y_3RA8hmrcjTFcG9Z81wPr7',
+            proto: 'tcp',
+            addr: 1717
+        }));*/
+        //log(url);
         if (server instanceof ChildProcess)
             server.kill();
         log('Server ip: ' + ip.address());
@@ -103,6 +126,7 @@ module.exports = async () => {
         const ip = await dialog('Server ip:');
         client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
             ip, '1717'
+            //ip.split(':', 2)[0], ip.split(':', 2)[1]
         ], {
                 cwd: __dirname + '/'
             });

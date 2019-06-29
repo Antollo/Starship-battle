@@ -61,6 +61,17 @@ public:
 
         //world.DestroyBody(body);
         body->SetUserData(nullptr);
+        decltype(Object::objects)::iterator it, jt;
+        for (auto it = Object::objects.begin(); it != Object::objects.end();)
+        {
+                jt = it++;
+                if (jt->second->getId() == getId())
+                {
+                    jt->second->destroy = true;
+                    jt->second->process();
+                }
+        }
+        
         Rock::create(polygon, body);
     }
     void process() override

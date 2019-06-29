@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
         }
         return L"print Bots are ready.\n"s;
     });
-    commandProcessor.bind(L"credits", [](std::wstring shipType, std::wstring pilotName) {
+    commandProcessor.bind(L"credits", []() {
         return L"print "
         L"SFML          - www.sfml-dev.org\n"
         L"Box2D         - box2d.org\n"
@@ -119,10 +119,10 @@ int main(int argc, char *argv[])
         L"                freesound.org/people/debsound/sounds/437602\n"s;
 
     });
-    commandProcessor.bind(L"delete", [](std::wstring shipType, std::wstring pilotName) {
+    commandProcessor.bind(L"delete", []() {
         return L"print Monika.chr deleted successfully.\n"s;
     });
-    commandProcessor.bind(L"list-spaceships", [](std::wstring shipType, std::wstring pilotName) {
+    commandProcessor.bind(L"list-spaceships", []() {
         std::wstring res = L"print "s;
         std::ifstream file("config.json");
         if (!file.good()) throw std::runtime_error("config.json not found.");
@@ -134,11 +134,11 @@ int main(int argc, char *argv[])
         }
         return res;
     });
-    commandProcessor.bind(L"beep", [](std::wstring shipType, std::wstring pilotName) {
+    commandProcessor.bind(L"beep", []() {
         resourceManager::playSound("glitch.wav");
         return L"print Server beeped.\n"s;
     });
-    commandProcessor.bind(L"help", [](std::wstring shipType, std::wstring pilotName) {
+    commandProcessor.bind(L"help", [](std::wstring arg) {
         return
         L"print \nSpaceship commander command prompt\n"
         L"Remote server, version from " + CommandProcessor::converter.from_bytes(__DATE__) + L" " + CommandProcessor::converter.from_bytes(__TIME__) + L"\n"
@@ -158,6 +158,32 @@ int main(int argc, char *argv[])
         L"    help                                \n"
         L"    credits                             \n"
         L"    list-spaceships                     \n"s;
+    });
+
+    // Job printing each letter of its arg in next server tick
+    commandProcessor.bind(L"job-api-test", [&commandProcessor, &downEvents](std::wstring arg) {
+        commandProcessor.job([&downEvents, arg]() {
+
+            //Static persistant variables
+            static std::wstring str = arg;
+            
+            // downEvents.emplace(DownEvent::Type::Response) == Write to all connected consoles
+
+            if (str.empty())
+            {
+                //Job ends when its return is empty
+                downEvents.emplace(DownEvent::Type::Response);
+                downEvents.back().message = L"print Job ended.\n"s;
+            }
+            else
+            {
+                downEvents.emplace(DownEvent::Type::Response);
+                downEvents.back().message = L"print "s + str.back() + L"\n"s;
+                str.pop_back();
+            }
+            return str;
+        });
+        return L"print Job started.\n"s;
     });
     
     //"Welcome screen":
@@ -332,6 +358,8 @@ int main(int argc, char *argv[])
                     break;
                 }
             }
+
+            commandProcessor.processJobs();
 
             //for (const auto& object : Object::objects)
             //    object.second->process();
