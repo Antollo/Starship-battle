@@ -129,8 +129,19 @@ public:
                 if (textInput.getString().getSize() > 2)
                     textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 2) + '_');
                 break;
-            case L'\t':
+            case L'`':
+            case L'~':
                 active = !active;
+                break;
+            case L'\t':
+                //Autocomplete
+                if (!active) break;
+                it = std::find_if(history.begin(), history.end(),
+                [key = textInput.getString().substring(1, textInput.getString().getSize() - 2)](const std::wstring& str) {
+                    return str.find(key) == 0;
+                });
+                if (it != history.end())
+                    textInput.setString(L">"s + *it + L"_"s);
                 break;
             case L']':
                 if (!active) break;
@@ -180,6 +191,7 @@ private:
     mutable sf::Text textOutput, notificationOutput, textInput;
     std::queue<std::wstring> entered;
     std::deque<std::wstring> history;
+    std::deque<std::wstring>::iterator it;
     std::size_t historyIterator;
     //std::future<std::wstring> wcinFuture;
     bool active;

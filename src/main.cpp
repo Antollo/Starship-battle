@@ -100,9 +100,12 @@ int main(int argc, char *argv[])
         if (!file.good()) throw std::runtime_error("config.json not found.");
         json jsonObject = json::parse(file);
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
+        std::size_t i = 0;
         for (const auto& name : spaceships)
         {
-            Bot::create(name);
+            i = 2;
+            while (i--)
+                Bot::create(name);
         }
         return L"print Bots are ready.\n"s;
     });
@@ -140,25 +143,34 @@ int main(int argc, char *argv[])
     });
     commandProcessor.bind(L"help", [](std::wstring arg) {
         return
-        L"print \nSpaceship commander command prompt\n"
-        L"Remote server, version from " + CommandProcessor::converter.from_bytes(__DATE__) + L" " + CommandProcessor::converter.from_bytes(__TIME__) + L"\n"
+        L"print \n"
+        L"----------------------------------\n"
+        L"Spaceship commander command prompt\n"
+        L"Remote server, version from " + CommandProcessor::converter.from_bytes(__DATE__) + L" " + CommandProcessor::converter.from_bytes(__TIME__) + L"\n\n"
         L"Use W key to accelerate\n"
         L"Use A and D keys to rotate\n"
         L"Use mouse right button to aim\n"
         L"Use mouse left button to shoot\n"
         L"Use mouse wheel to scale the view\n"
-        L"Use tab to switch console input\n"
-        L"These shell commands are defined internally\n"
-        L"    beep                                \n"
-        L"    create [spaceship type] [pilot name]\n"
-        L"    create-bot [spaceship type]         \n"
-        L"    create-bots                         \n"
+        L"Use tilde key to switch console input\n"
+        L"Use up, down, and tab keys as in normal console\n\n"
+        L"List of commands:\n"
+        L"    create [spaceship type] [pilot name] (aliased as 'c')\n"
+        L"    create-bot [spaceship type]          (aliased as 'cb')\n"
+        L"    create-bots                          (aliased as 'cbs')\n"
+        L"    list-spaceships                      (aliased as 'ls')\n"
+        L"    help                                 (aliased as 'h')\n"
         L"    delete                              \n"
-        L"    TODO: time, heal                    \n"
         L"    help                                \n"
         L"    credits                             \n"
-        L"    list-spaceships                     \n"s;
+        L"    beep                                \n"s;
     });
+
+    commandProcessor.alias(L"create", L"c");
+    commandProcessor.alias(L"create-bot", L"cb");
+    commandProcessor.alias(L"create-bots", L"cbs");
+    commandProcessor.alias(L"list-spaceships", L"ls");
+    commandProcessor.alias(L"help", L"h");
 
     // Job printing each letter of its arg in next server tick
     commandProcessor.bind(L"job-api-test", [&commandProcessor, &downEvents](std::wstring arg) {
@@ -188,6 +200,7 @@ int main(int argc, char *argv[])
     
     //"Welcome screen":
     console
+    << L"----------------------------------\n"
     << L"Spaceship commander command prompt\n"
     << (serverSide ? L"Server, " : L"Client, ")
     << L"version from " << CommandProcessor::converter.from_bytes(__DATE__) << L" " << CommandProcessor::converter.from_bytes(__TIME__) << L"\n"
@@ -515,7 +528,7 @@ int main(int argc, char *argv[])
         }
         //...
         tick++;
-        if (tick >= 1000)
+        if (tick >= 10000)
         {
             tick = 0;
             if(serverSide) {

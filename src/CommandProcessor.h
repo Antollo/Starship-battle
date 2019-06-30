@@ -15,9 +15,10 @@
 //using ArgsText = std::wstring;
 //using ArgsStream = std::basic_stringstream<ArgsText::value_type>;
 
-inline sf::Packet& operator >>(std::wstringstream& lhs, std::wstringstream& rhs)
+inline std::wstringstream& operator >>(std::wstringstream& lhs, std::wstringstream& rhs)
 {
-    rhs << lhs.rdbuf(); 
+    rhs << lhs.rdbuf();
+    return lhs;
 }
 class CallableBase
 {
@@ -97,7 +98,7 @@ public:
     {
         jobs.emplace_back(new Callable(std::function(callback)));
     }
-    void alias(const std::wstring& alias, const std::wstring& key)
+    void alias(const std::wstring& key, const std::wstring& alias)
     {
         map.emplace(alias, new Callable(std::function([this, key] (std::wstringstream& args) {
             return call(key, args);
