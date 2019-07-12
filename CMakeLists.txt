@@ -10,7 +10,9 @@ if(MSVC)
     add_compile_options(/O2 /W3 /MT)
     #/GL
 else()
-    add_compile_options(-O3)
+    if(NOT CMAKE_BUILD_TYPE)
+        add_compile_options(-O3)
+    endif()
 endif()
 
 add_subdirectory(thirdparty/SFML)

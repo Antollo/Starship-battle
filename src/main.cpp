@@ -374,12 +374,13 @@ int main(int argc, char *argv[])
 
             commandProcessor.processJobs();
 
-            //for (const auto& object : Object::objects)
-            //    object.second->process();
+            for (const auto& object : Object::objects)
+                object.second->process();
+
             for (i = Object::objects.begin(); i != Object::objects.end();)
             {
                 j = i++;
-                j->second->process();
+                j->second->checkDestroy();
             }
 
             Object::world.Step(delta, 8, 3);

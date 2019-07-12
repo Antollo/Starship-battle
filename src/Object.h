@@ -53,6 +53,10 @@ public:
     virtual ObjectId getId() { return id; }
     virtual void process()
     {
+        //if (destroy) onDestroy();
+    }
+    void checkDestroy()
+    {
         if (destroy) onDestroy();
     }
     bool destroy;
