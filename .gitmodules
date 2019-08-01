@@ -7,3 +7,7 @@
 [submodule "thirdparty/json/json"]
 	path = thirdparty/json/json
 	url = https://github.com/nlohmann/json
+[submodule "webserver"]
+	path = webserver
+	url = https://git.heroku.com/starship-battle.git
+
