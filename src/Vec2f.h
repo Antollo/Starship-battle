@@ -63,13 +63,13 @@ public:
     {
         return {x - v.x, y - v.y};
     }
-    Vec2f &Vec2f::operator =(Vec2f&& v)
+    Vec2f& operator =(Vec2f&& v)
     {
         x = v.x;
         y = v.y;
         return *this;
     }
-    Vec2f &Vec2f::operator =(const Vec2f& v)
+    Vec2f& operator =(const Vec2f& v)
     {
         x = v.x;
         y = v.y;
