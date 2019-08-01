@@ -9,5 +9,5 @@
 	url = https://github.com/nlohmann/json
 [submodule "webserver"]
 	path = webserver
-	url = https://git.heroku.com/starship-battle.git
+	url = https://github.com/Antollo/webserver.git
 
