@@ -6,6 +6,7 @@
 *.dir
 Win32
 src/Release/starship_battle_game
+secret.h
 # End of created manually
 
 # Created by https://www.gitignore.io/api/cmake,codeblocks,visualstudio,visualstudiocode

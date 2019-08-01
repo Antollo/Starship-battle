@@ -1,7 +1,7 @@
 {
     "name": "starship-battle",
     "productName": "starship-battle",
-    "version": "0.1.11",
+    "version": "0.2.0",
     "description": "Starship battle game launcher",
     "main": "src/index.js",
     "scripts": {
@@ -66,21 +66,21 @@
     },
     "dependencies": {
         "adm-zip": "^0.4.13",
-        "custom-electron-titlebar": "^3.0.10",
+        "custom-electron-titlebar": "^3.1.0",
         "electron-dl": "^1.14.0",
         "electron-squirrel-startup": "^1.0.0",
         "get-json": "^1.0.1",
         "ip": "^1.1.5",
-        "semver": "^6.1.2",
+        "semver": "^6.3.0",
         "tableify": "^1.1.0"
     },
     "devDependencies": {
-        "@electron-forge/cli": "^6.0.0-beta.39",
-        "@electron-forge/maker-deb": "^6.0.0-beta.39",
-        "@electron-forge/maker-rpm": "^6.0.0-beta.39",
-        "@electron-forge/maker-squirrel": "^6.0.0-beta.39",
-        "@electron-forge/maker-zip": "^6.0.0-beta.39",
-        "@electron-forge/publisher-github": "^6.0.0-beta.39",
+        "@electron-forge/cli": "^6.0.0-beta.43",
+        "@electron-forge/maker-deb": "^6.0.0-beta.43",
+        "@electron-forge/maker-rpm": "^6.0.0-beta.43",
+        "@electron-forge/maker-squirrel": "^6.0.0-beta.43",
+        "@electron-forge/maker-zip": "^6.0.0-beta.43",
+        "@electron-forge/publisher-github": "^6.0.0-beta.43",
         "electron": "5.0.5"
     }
 }

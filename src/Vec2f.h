@@ -17,6 +17,8 @@ public:
     Vec2f(float X, float Y) : x(X), y(Y) {}
     Vec2f(const sf::Vector2f& vec) : x(vec.x), y(vec.y) {}
     Vec2f(const b2Vec2& vec) : x(vec.x), y(vec.y) {}
+    Vec2f(const Vec2f& vec) : x(vec.x), y(vec.y) {}
+    Vec2f(Vec2f&& vec) : x(vec.x), y(vec.y) {}
     static const Vec2f& asVec2f (const sf::Vector2f& vec)
     {
         return *reinterpret_cast<const Vec2f*>(&vec);
@@ -60,6 +62,18 @@ public:
     Vec2f operator -(const Vec2f& v) const
     {
         return {x - v.x, y - v.y};
+    }
+    Vec2f &Vec2f::operator =(Vec2f&& v)
+    {
+        x = v.x;
+        y = v.y;
+        return *this;
+    }
+    Vec2f &Vec2f::operator =(const Vec2f& v)
+    {
+        x = v.x;
+        y = v.y;
+        return *this;
     }
 };
 

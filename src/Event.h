@@ -139,7 +139,7 @@ inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
         packet >> type >> size;
         polygon.vertices.setPrimitiveType((sf::PrimitiveType)type);
         polygon.vertices.resize(size);
-        for (size_t i = 0; i < size; i++)
+        for (std::int32_t i = 0; i < size; i++)
         {
             packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y
             >> polygon.vertices[i].color.r >> polygon.vertices[i].color.g

@@ -13,8 +13,38 @@
             font-size: 16px;
         }
 
+        h1 {
+            text-align: center;
+            font-size: 32px;
+        }
+
+        h1::after {
+            content: '';
+            display: inline-block;
+            background-color: white;
+            vertical-align: top;
+            margin-left: -1ch;
+            width: 1ch;
+            height: 1em;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1.0;
+            }
+
+            50% {
+                opacity: 0.0;
+            }
+
+            100% {
+                opacity: 1.0;
+            }
+        }
+
         .parent {
-            padding: 16px 0 16px 16px;
+            padding: 16px;
             box-sizing: border-box;
             height: 100%;
             width: 100%;
@@ -23,23 +53,32 @@
 
         .button {
             cursor: pointer;
+            width: 100%;
+        }
+
+        .big-button {
+            text-align: center;
+            font-size: 26px;
+            border: 2px solid white;
+            padding-top: 4px;
+            padding-bottom: 4px;
         }
 
         .button:hover {
             text-decoration-line: underline;
         }
 
-        .button::after {
+        .button::before {
             line-height: 16px;
             display: inline-block;
         }
 
-        .button[checked=true]::after {
-            content: ' ✓';
+        .button[checked=true]::before {
+            content: '✓';
         }
 
-        .button[checked=false]::after {
-            content: ' ✗';
+        .button[checked=false]::before {
+            content: '✗';
 
         }
 
@@ -112,6 +151,17 @@
             background-color: white;
             color: black;
         }
+
+        #controls {
+            height: 70%;
+        }
+
+        #buttons {
+            display: flex;
+            flex-wrap: wrap;
+            height: 100%;
+            align-content: space-between;
+        }
     </style>
 </head>
 
@@ -119,29 +169,46 @@
     <div class="parent">
         <div id="controls">
             <div id="buttons">
-                <div class="button" id="client" title="Starts client session, needs to connect to the server.">
-                    start-client
+                <h1>
+                    Starship battle
+                </h1>
+                <div class="button big-button" id="local" title="Starts client and server, connect client to server.">
+                    Play game
                 </div>
-                <div class="button" id="server" title="Starts server session.">
+                <div class="button big-button" id="client"
+                    title="Starts client session, needs to connect to the server.">
+                    Join game (LAN)
+                </div>
+                <div class="button big-button" id="ranked"
+                    title="Starts client and server, prepare ranked mode.">
+                    Play ranked game
+                </div>
+                <div class="button big-button" id="help"
+                    title="Visit website">
+                    Visit website
+                </div>
+                <!--<div class="button" id="server" title="Starts server session.">
                     start-server
-                </div>
-                <div class="button" id="local" title="Starts client and server, connect client to server.">
-                    start-local (play alone)
-                </div>
-                <div class="button" id="spaceships" title="Lists spaceships stats.">
+                </div>-->
+
+                <!--<div class="button" id="spaceships" title="Lists spaceships stats.">
                     list-spaceships-stats
                 </div>
                 <div class="button" id="clear" title="Clear logs console.">
                     clear-console
+                </div>-->
+                <div>
+                    <div style="font-size: 22px; margin-bottom: 4px;">Logs: </div>
+                    <div class="button" id="scroll" title="Auto scroll." checked="true">
+                        auto scroll
+                    </div>
                 </div>
-                <div class="button" id="scroll" title="Clear logs console." checked="true">
-                    auto-scroll-console
-                </div>
+
             </div>
             <div id="input" hidden>
                 <label for="input-text"></label>
                 <input id="input-text" type="text">
-                <div class="button" id="ok" title="Starts client.">
+                <div class="button" id="ok" title="Ok">
                     ok
                 </div>
             </div>

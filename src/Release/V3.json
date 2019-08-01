@@ -1,6 +1,6 @@
 {
     "linearDamping": 0.8,
-    "angularDamping": 1,
+    "angularDamping": 1.5,
     "force": 320,
     "torque": 90,
     "friction": 0,

@@ -54,7 +54,7 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = 6.f;
+        fixtureDef.density = 7.5f;
         fixtureDef.friction = 0.2f;
         fixtureDef.filter.groupIndex = index;
         fixtureDef.shape = &shape;

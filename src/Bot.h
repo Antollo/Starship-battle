@@ -2,6 +2,7 @@
 #define BOT_H_
 
 #include <limits>
+#include <set>
 #include "Spaceship.h"
 
 class Bot : public Spaceship
@@ -42,7 +43,7 @@ public:
             while (aimAngle > pi) aimAngle -= 2.f * pi;
             while (aimAngle < -pi) aimAngle += 2.f * pi;
 
-            if (getCenterPosition().getSquaredDistance(newAimCoords) < 80000.f * 80000.f && aimAngle > -0.5f && aimAngle < 0.5f)
+            if (getCenterPosition().getSquaredDistance(newAimCoords) < 80000.f * 80000.f && aimAngle > -0.6f && aimAngle < 0.6f)
                 shoot = true;
             else
                 shoot = false;
@@ -78,14 +79,24 @@ public:
     }
     void target(const Object::ObjectId& id)
     {
-        targets.push_back(id);
+        targets.insert(id);
+    }
+    static void allTarget(const Object::ObjectId& id)
+    {
+        for (auto& obj : objects)
+        {
+            if (obj.second->getTypeId() == Object::TypeId::Bot)
+            {
+                dynamic_cast<Bot&>(*obj.second).target(id);
+            }
+        }
     }
     ~Bot() override
     {
         //create(t, pID);
     }
 private:
-    std::vector<Object::ObjectId> targets;
+    std::set<Object::ObjectId> targets;
     Bot(const std::string& type) : Spaceship(type)
     { }
 };

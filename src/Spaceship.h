@@ -203,7 +203,6 @@ private:
     std::vector<Turret> turrets;
     sf::Clock clock;
     friend class Bot;
-    friend class Cursor;
     friend class ContactListener;
     friend class RenderSerializer;
 };

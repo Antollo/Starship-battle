@@ -4,7 +4,7 @@ module.exports = async () => {
     const fs = require('fs');
     const ip = require('ip');
     const { spawn, ChildProcess } = require('child_process');
-    const { ipcRenderer, remote } = require('electron');
+    const { ipcRenderer, remote, shell } = require('electron');
     const tableify = require('tableify');
     const getJSON = require('get-json');
     const semver = require('semver');
@@ -81,30 +81,7 @@ module.exports = async () => {
 
     let client, server;
 
-    document.getElementById('server').addEventListener('click', async () => {
-
-        /*const url = await new Promise((resolve, reject) => {
-            if (ssh instanceof ChildProcess)
-                ssh.kill();
-            ssh = spawn('ssh', ['-R', '0:localhost:1717', 'serveo.net']);
-            ssh.stdout.on('data', (data) => {
-                console.log(data.toString());
-                stripAnsi(data.toString()).split(' ').forEach((word) => {
-                    if (word.match(/serveo.net:[0-9]+/g)) {
-                        console.log(word);
-                        log(`Server address: ${word}`);
-                        resolve(word);
-                    };
-                });
-            });
-        });*/
-
-        /*log('Server address: ' + await ngrok.connect({
-            authtoken: '4KDYDLCo66uAVMpN8cK3Y_3RA8hmrcjTFcG9Z81wPr7',
-            proto: 'tcp',
-            addr: 1717
-        }));*/
-        //log(url);
+    /*document.getElementById('server').addEventListener('click', async () => {
         if (server instanceof ChildProcess)
             server.kill();
         log('Server ip: ' + ip.address());
@@ -118,15 +95,15 @@ module.exports = async () => {
         server.stderr.on('data', (data) => {
             extendedLog('Server error', data);
         });
-    });
+    });*/
 
     document.getElementById('client').addEventListener('click', async () => {
         if (client instanceof ChildProcess)
             client.kill();
         const ip = await dialog('Server ip:');
         client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
-            ip, '1717'
-            //ip.split(':', 2)[0], ip.split(':', 2)[1]
+            'ip', ip,
+            'port', '1717'
         ], {
                 cwd: __dirname + '/'
             });
@@ -146,13 +123,16 @@ module.exports = async () => {
         if (client instanceof ChildProcess)
             client.kill();
 
-        server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, ['server'], {
+        server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
+            'server', 'normal',
+            'port', '1717'
+        ], {
             cwd: __dirname + '/'
         });
 
         client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
-            '127.0.0.1',
-            '1717'
+            'ip', '127.0.0.1',
+            'port', '1717'
         ], {
                 cwd: __dirname + '/'
             });
@@ -172,7 +152,48 @@ module.exports = async () => {
         });
     });
 
-    document.getElementById('spaceships').addEventListener('click', async () => {
+    document.getElementById('ranked').addEventListener('click', () => {
+
+        if (server instanceof ChildProcess)
+            server.kill();
+        if (client instanceof ChildProcess)
+            client.kill();
+
+        server = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
+            'server', 'ranked',
+            'port', '1717'
+        ], {
+            cwd: __dirname + '/'
+        });
+
+        client = spawn(__dirname + '/' + require(__dirname + '/config.json').executable, [
+            'ip', '127.0.0.1',
+            'port', '1717',
+            'command', 'ranked'
+        ], {
+                cwd: __dirname + '/'
+            });
+
+        server.stdout.on('data', (data) => {
+            extendedLog('Server', data);
+        });
+        server.stderr.on('data', (data) => {
+            extendedLog('Server error', data);
+        });
+
+        client.stdout.on('data', (data) => {
+            extendedLog('Client', data);
+        });
+        client.stderr.on('data', (data) => {
+            extendedLog('Client error', data);
+        });
+    });
+
+    document.getElementById('help').addEventListener('click', () => {
+        shell.openExternal('https://starship-battle.herokuapp.com/');
+    });
+
+    /*document.getElementById('spaceships').addEventListener('click', async () => {
         for (spaceshipName of require(__dirname + '/config.json').spaceships) {
             const spaceship = { type: 'spaceship', name: spaceshipName, ...require(`${__dirname}/${spaceshipName}.json`) };
             extendedLog(`${__dirname}\\${spaceshipName}.json`, tableify(spaceship));
@@ -180,11 +201,11 @@ module.exports = async () => {
             const turret = { type: 'turret', name: turretName, ...require(`${__dirname}/${turretName}.json`) };
             extendedLog(`${__dirname}\\${turretName}.json`, tableify(turret));
         }
-    });
+    });*/
 
-    document.getElementById('clear').addEventListener('click', async () => {
+    /*document.getElementById('clear').addEventListener('click', async () => {
         document.getElementById('log').innerHTML = '';
-    });
+    });*/
 
     document.getElementById('scroll').addEventListener('click', async () => {
         scrollSwitch = !scrollSwitch;
