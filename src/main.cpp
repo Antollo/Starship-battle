@@ -73,10 +73,12 @@ int main(int argc, const char *argv[])
 
     CommandProcessor::init(commandProcessor);
 
-    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents]() {
+    constexpr const auto secret = obfuscate(SECRET);
+
+    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
         Object::objects.clear();
 
-        commandProcessor.bind(L"ranked-create", [&commandProcessor, &downEvents](std::wstring shipType, std::wstring pilotName) {
+        commandProcessor.bind(L"ranked-create", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
             Object::objects.clear();
             std::size_t n = 60;
             while (n--)
@@ -96,7 +98,7 @@ int main(int argc, const char *argv[])
             std::chrono::high_resolution_clock::time_point
                 begin = std::chrono::high_resolution_clock::now();
 
-            commandProcessor.job([&commandProcessor, &downEvents, id, shipType, pilotName, begin]() {
+            commandProcessor.job([&commandProcessor, &downEvents, &secret, id, shipType, pilotName, begin]() {
                 static std::chrono::high_resolution_clock::time_point now,
                     helper = std::chrono::high_resolution_clock::now() - std::chrono::seconds(50);
 
@@ -124,7 +126,7 @@ int main(int argc, const char *argv[])
                         {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
                         {"shipType", CommandProcessor::converter.to_bytes(shipType)},
                         {"time", std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count()},
-                        {"secret", SECRET},
+                        {"secret", deobfuscate(secret)},
                     };
 
                     sf::Http http("http://starship-battle.herokuapp.com/");
