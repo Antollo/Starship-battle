@@ -11,3 +11,6 @@
 	path = webserver
 	url = https://github.com/Antollo/webserver.git
 
+[submodule "thirdparty/digestpp/digestpp"]
+	path = thirdparty/digestpp/digestpp
+	url = https://github.com/kerukuro/digestpp

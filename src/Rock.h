@@ -1,7 +1,6 @@
 #ifndef ROCK_H_
 #define ROCK_H_
 
-#include <fstream>
 #include <utility>
 #include <stdexcept>
 #include "Object.h"

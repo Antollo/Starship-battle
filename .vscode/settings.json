@@ -306,6 +306,7 @@
         "cbegin",
         "chrono",
         "custom",
+        "nlohmann",
         "stoi",
         "tableify",
         "titlebar"

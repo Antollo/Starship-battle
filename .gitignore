@@ -1,5 +1,7 @@
 # Created manually
 *.exe
+dummy.cpp
+*.lib
 *.sln
 *.vcxproj
 *.filters

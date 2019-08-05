@@ -1,7 +1,6 @@
 #ifndef SPACESHIP_H_
 #define SPACESHIP_H_
 
-#include <fstream>
 #include <utility>
 #include <stdexcept>
 #include "Object.h"
@@ -94,9 +93,7 @@ public:
 private:
     Spaceship(const std::string& type, const std::wstring& newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1)) : forward(false), left(false), right(false), aim(false), shoot(false), playerId(newPlayerId)
     {
-        std::ifstream file(type + ".json");
-        if (!file.good()) throw std::runtime_error("Informations about spaceship not found.");
-        json jsonObject = json::parse(file);
+        json jsonObject = resourceManager::getJSON(type);
 
         b2BodyDef bodyDef;
         bodyDef.type = b2_dynamicBody;

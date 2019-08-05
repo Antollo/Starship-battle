@@ -1,7 +1,6 @@
 #ifndef TURRET_H_
 #define TURRET_H_
 
-#include <fstream>
 #include "Object.h"
 #include "Bullet.h"
 
@@ -10,9 +9,7 @@ class Turret : public sf::Drawable, public sf::Transformable, public RenderSeria
 public:
     Turret(const std::string& type)
     {
-        std::ifstream file(type + ".json");
-        if (!file.good()) throw std::runtime_error("Informations about turret not found.");
-        json jsonObject = json::parse(file);
+        json jsonObject = resourceManager::getJSON(type);
 
         std::vector<Vec2f> points = jsonObject["points"].get<std::vector<Vec2f>>();
         std::size_t n = points.size();

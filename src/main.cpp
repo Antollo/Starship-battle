@@ -3,6 +3,7 @@
 #include <chrono>
 #include <queue>
 #include <string>
+#include <future>
 #include <SFML/Graphics.hpp>
 #include "ContactListener.h"
 #include "Console.h"
@@ -17,6 +18,7 @@
 #include "resourceManager.h"
 #include "Args.h"
 #include "secret.h"
+#include "protector.h"
 
 int main(int argc, const char *argv[])
 {
@@ -76,10 +78,13 @@ int main(int argc, const char *argv[])
     constexpr const auto secret = obfuscate(SECRET);
 
     commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
-        Object::objects.clear();
+        Object::destroyAll();
+        static std::chrono::steady_clock::time_point begin;
+        static std::chrono::steady_clock::time_point helper;
+        static std::future<void> httpFuture;
 
         commandProcessor.bind(L"ranked-create", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
-            Object::objects.clear();
+            Object::destroyAll();
             std::size_t n = 60;
             while (n--)
                 Rock::create();
@@ -95,19 +100,18 @@ int main(int argc, const char *argv[])
 
             Object::ObjectId id = Spaceship::create(CommandProcessor::converter.to_bytes(shipType), pilotName)->getId();
 
-            std::chrono::high_resolution_clock::time_point
-                begin = std::chrono::high_resolution_clock::now();
+            begin = std::chrono::steady_clock::now();
+            helper = std::chrono::steady_clock::now() - std::chrono::seconds(50);
 
-            commandProcessor.job([&commandProcessor, &downEvents, &secret, id, shipType, pilotName, begin]() {
-                static std::chrono::high_resolution_clock::time_point now,
-                    helper = std::chrono::high_resolution_clock::now() - std::chrono::seconds(50);
+            commandProcessor.job([&commandProcessor, &downEvents, &secret, id, shipType, pilotName]() {
+                static std::chrono::steady_clock::time_point now;
 
                 if (Object::objects.count(id) == 1)
                 {
-                    now = std::chrono::high_resolution_clock::now();
+                    now = std::chrono::steady_clock::now();
                     if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 60.f)
                     {
-                        helper = std::chrono::high_resolution_clock::now();
+                        helper = std::chrono::steady_clock::now();
                         downEvents.emplace(DownEvent::Type::Response);
                         downEvents.back().message = L"print Warning! Spawning new enemies!\n"s;
                         commandProcessor.call(L"create-bots"s);
@@ -121,32 +125,46 @@ int main(int argc, const char *argv[])
                                                 L"You survived for: "s +
                                                 std::to_wstring(int(std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count())) +
                                                 L" seconds.\n"s;
-
+                    if (isDebuggerAttached())
+                    {
+                        std::cerr << "Debugger is attached." << std::endl;
+                        return L""s;
+                    }
                     json body = {
                         {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
                         {"shipType", CommandProcessor::converter.to_bytes(shipType)},
                         {"time", std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count()},
                         {"secret", deobfuscate(secret)},
-                    };
+                        {"hash", resourceManager::getJSON("hash")}};
 
-                    sf::Http http("http://starship-battle.herokuapp.com/");
-                    sf::Http::Request request;
-                    sf::Http::Response response;
+                    if (httpFuture.valid())
+                        httpFuture.get();
 
-                    request.setMethod(sf::Http::Request::Post);
-                    request.setUri("api/results");
-                    request.setHttpVersion(1, 1);
-                    request.setField("Content-Type", "application/json");
-                    request.setBody(body.dump());
-                    response = http.sendRequest(request);
+                    httpFuture = std::async(std::launch::async, [body]() {
+                        sf::Http http("http://starship-battle.herokuapp.com/");
+                        sf::Http::Request request;
+                        sf::Http::Response response;
 
-                    if (response.getStatus() != sf::Http::Response::Created)
-                    {
-                        std::cerr << "Could not save score to server." << std::endl;
-                        std::cerr << "Status: " << response.getStatus() << std::endl;
-                        std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
-                        std::cerr << "Body: " << response.getBody() << std::endl;
-                    }
+                        request.setMethod(sf::Http::Request::Post);
+                        request.setUri("api/results");
+                        request.setHttpVersion(1, 1);
+                        request.setField("Content-Type", "application/json");
+                        if (isDebuggerAttached())
+                        {
+                            std::cerr << "Debugger is attached." << std::endl;
+                            return;
+                        }
+                        request.setBody(body.dump());
+                        response = http.sendRequest(request);
+
+                        if (response.getStatus() != sf::Http::Response::Created)
+                        {
+                            std::cerr << "Could not save score to server." << std::endl;
+                            std::cerr << "Status: " << response.getStatus() << std::endl;
+                            std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
+                            std::cerr << "Body: " << response.getBody() << std::endl;
+                        }
+                    });
 
                     return L""s;
                 }
@@ -352,14 +370,7 @@ int main(int argc, const char *argv[])
 
             commandProcessor.processJobs();
 
-            for (const auto &object : Object::objects)
-                object.second->process();
-
-            for (i = Object::objects.begin(); i != Object::objects.end();)
-            {
-                j = i++;
-                j->second->checkDestroy();
-            }
+            Object::processAll();
 
             Object::world.Step(delta, 8, 3);
 

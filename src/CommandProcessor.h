@@ -134,10 +134,7 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
     });
 
     commandProcessor.bind(L"create-bots", []() {
-        std::ifstream file("config.json");
-        if (!file.good())
-            throw std::runtime_error("config.json not found.");
-        json jsonObject = json::parse(file);
+        json jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
         std::size_t i = 0;
         for (const auto &name : spaceships)
@@ -166,10 +163,7 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
 
     commandProcessor.bind(L"list-spaceships", []() {
         std::wstring res = L"print "s;
-        std::ifstream file("config.json");
-        if (!file.good())
-            throw std::runtime_error("config.json not found.");
-        json jsonObject = json::parse(file);
+       const json& jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
         for (const auto &name : spaceships)
         {
