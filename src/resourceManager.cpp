@@ -21,7 +21,7 @@ json resourceManager::getJSON(const std::string &name)
         {
             ret += el.second.dump();
         }
-        return { "sha256", digestpp::sha256().absorb(ret).hexdigest() };
+        return {{ "sha256", digestpp::sha256().absorb(ret).hexdigest() }};
     }
     if (!jsonMap.count(name))
     {

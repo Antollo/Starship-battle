@@ -100,6 +100,44 @@ int main(int argc, const char *argv[])
 
             Object::ObjectId id = Spaceship::create(CommandProcessor::converter.to_bytes(shipType), pilotName)->getId();
 
+            if (isDebuggerAttached())
+            {
+                std::cerr << "Debugger is attached." << std::endl;
+                return L""s;
+            }
+            json body = {
+                {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
+                {"secret", deobfuscate(secret)}};
+
+            if (httpFuture.valid())
+                httpFuture.get();
+            httpFuture = std::async(std::launch::async, [body]() {
+                sf::Http http("http://starship-battle.herokuapp.com/");
+                //sf::Http http("http://127.0.0.1/", 3000);
+                sf::Http::Request request;
+                sf::Http::Response response;
+
+                request.setMethod(sf::Http::Request::Post);
+                request.setUri("api/results/start");
+                request.setHttpVersion(1, 1);
+                request.setField("Content-Type", "application/json");
+                if (isDebuggerAttached())
+                {
+                    std::cerr << "Debugger is attached." << std::endl;
+                    return;
+                }
+                request.setBody(body.dump());
+                response = http.sendRequest(request);
+
+                if (response.getStatus() != sf::Http::Response::Created)
+                {
+                    std::cerr << "Could not save score to server." << std::endl;
+                    std::cerr << "Status: " << response.getStatus() << std::endl;
+                    std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
+                    std::cerr << "Body: " << response.getBody() << std::endl;
+                }
+            });
+
             begin = std::chrono::steady_clock::now();
             helper = std::chrono::steady_clock::now() - std::chrono::seconds(50);
 
@@ -133,20 +171,19 @@ int main(int argc, const char *argv[])
                     json body = {
                         {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
                         {"shipType", CommandProcessor::converter.to_bytes(shipType)},
-                        {"time", std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count()},
                         {"secret", deobfuscate(secret)},
                         {"hash", resourceManager::getJSON("hash")}};
 
                     if (httpFuture.valid())
                         httpFuture.get();
-
                     httpFuture = std::async(std::launch::async, [body]() {
                         sf::Http http("http://starship-battle.herokuapp.com/");
+                        //sf::Http http("http://127.0.0.1/", 3000);
                         sf::Http::Request request;
                         sf::Http::Response response;
 
                         request.setMethod(sf::Http::Request::Post);
-                        request.setUri("api/results");
+                        request.setUri("api/results/end");
                         request.setHttpVersion(1, 1);
                         request.setField("Content-Type", "application/json");
                         if (isDebuggerAttached())

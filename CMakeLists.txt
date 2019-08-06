@@ -11,7 +11,7 @@ if(MSVC)
     #/GL
 else()
     if(NOT CMAKE_BUILD_TYPE)
-        add_compile_options(-O3)
+        add_compile_options(-O3 -static-libgcc -static-libstdc++)
     endif()
 endif()
 
