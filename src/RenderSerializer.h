@@ -34,8 +34,8 @@ public:
                     dynamic_cast<Spaceship&>(*it.second).playerId,
                     it.second->getCenterPosition(),
                     dynamic_cast<Spaceship&>(*it.second).getReloadState(),
-                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second).hp,
-                    (std::int32_t) dynamic_cast<Spaceship&>(*it.second).maxHp
+                    static_cast<std::int16_t>(dynamic_cast<Spaceship&>(*it.second).hp),
+                    static_cast<std::int16_t>(dynamic_cast<Spaceship&>(*it.second).maxHp)
                 });
             }
         }

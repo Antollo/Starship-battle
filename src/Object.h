@@ -60,7 +60,7 @@ public:
             onDestroy();
     }
     bool destroy;
-    static int counter;
+    static Object::ObjectId counter;
     static ObjectsContainer objects;
     static ObjectId thisPlayerId;
     static b2World world;

@@ -38,14 +38,18 @@ module.exports = async () => {
 
     async function dialog(description) {
         document.querySelector('#input>label').textContent = description;
-        document.getElementById('buttons').setAttribute('hidden', '');
-        document.getElementById('input').removeAttribute('hidden');
+        //document.getElementById('buttons').setAttribute('hidden', '');
+        document.getElementById('buttons').style.display = 'none';
+        //document.getElementById('input').removeAttribute('hidden');
+        document.getElementById('input').style.display = '';
         return await new Promise((resolve, reject) => {
             document.getElementById('ok').addEventListener('click', () => {
                 resolve(document.getElementById('input-text').value);
                 document.getElementById('input-text').value = '';
-                document.getElementById('input').setAttribute('hidden', '');
-                document.getElementById('buttons').removeAttribute('hidden');
+                //document.getElementById('input').setAttribute('hidden', '');
+                document.getElementById('input').style.display = 'none';
+                //document.getElementById('buttons').removeAttribute('hidden');
+                document.getElementById('buttons').style.display = 'flex';
             }, { once: true });
         });
     }
@@ -96,6 +100,9 @@ module.exports = async () => {
             extendedLog('Server error', data);
         });
     });*/
+
+    document.getElementById('buttons').style.display = 'flex';
+    document.getElementById('input').style.display = 'none';
 
     document.getElementById('client').addEventListener('click', async () => {
         if (client instanceof ChildProcess)

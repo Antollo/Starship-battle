@@ -19,6 +19,7 @@
 #include "Args.h"
 #include "secret.h"
 #include "protector.h"
+#include "RankedBattle.h"
 
 int main(int argc, const char *argv[])
 {
@@ -77,137 +78,14 @@ int main(int argc, const char *argv[])
 
     constexpr const auto secret = obfuscate(SECRET);
 
-    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
+    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {      
+        static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
         Object::destroyAll();
-        static std::chrono::steady_clock::time_point begin;
-        static std::chrono::steady_clock::time_point helper;
-        static std::future<void> httpFuture;
-
         commandProcessor.bind(L"ranked-create", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
-            Object::destroyAll();
-            std::size_t n = 60;
-            while (n--)
-                Rock::create();
-
-            //Borders
-            constexpr float width = 20.f; // Half of width
-            constexpr float pos = 400.f;
-
-            Rock::create({{-width, pos - width}, {width, pos + width}, {-width, -pos + width}, {width, -pos - width}}, pos, 0.f);
-            Rock::create({{-width, pos + width}, {width, pos - width}, {-width, -pos - width}, {width, -pos + width}}, -pos, 0.f);
-            Rock::create({{pos - width, -width}, {pos + width, width}, {-pos + width, -width}, {-pos - width, width}}, 0.f, pos);
-            Rock::create({{pos + width, -width}, {pos - width, width}, {-pos - width, -width}, {-pos + width, width}}, 0.f, -pos);
-
-            Object::ObjectId id = Spaceship::create(CommandProcessor::converter.to_bytes(shipType), pilotName)->getId();
-
-            if (isDebuggerAttached())
-            {
-                std::cerr << "Debugger is attached." << std::endl;
-                return L""s;
-            }
-            json body = {
-                {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
-                {"secret", deobfuscate(secret)}};
-
-            if (httpFuture.valid())
-                httpFuture.get();
-            httpFuture = std::async(std::launch::async, [body]() {
-                sf::Http http("http://starship-battle.herokuapp.com/");
-                //sf::Http http("http://127.0.0.1/", 3000);
-                sf::Http::Request request;
-                sf::Http::Response response;
-
-                request.setMethod(sf::Http::Request::Post);
-                request.setUri("api/results/start");
-                request.setHttpVersion(1, 1);
-                request.setField("Content-Type", "application/json");
-                if (isDebuggerAttached())
-                {
-                    std::cerr << "Debugger is attached." << std::endl;
-                    return;
-                }
-                request.setBody(body.dump());
-                response = http.sendRequest(request);
-
-                if (response.getStatus() != sf::Http::Response::Created)
-                {
-                    std::cerr << "Could not save score to server." << std::endl;
-                    std::cerr << "Status: " << response.getStatus() << std::endl;
-                    std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
-                    std::cerr << "Body: " << response.getBody() << std::endl;
-                }
-            });
-
-            begin = std::chrono::steady_clock::now();
-            helper = std::chrono::steady_clock::now() - std::chrono::seconds(50);
-
-            commandProcessor.job([&commandProcessor, &downEvents, &secret, id, shipType, pilotName]() {
-                static std::chrono::steady_clock::time_point now;
-
-                if (Object::objects.count(id) == 1)
-                {
-                    now = std::chrono::steady_clock::now();
-                    if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 60.f)
-                    {
-                        helper = std::chrono::steady_clock::now();
-                        downEvents.emplace(DownEvent::Type::Response);
-                        downEvents.back().message = L"print Warning! Spawning new enemies!\n"s;
-                        commandProcessor.call(L"create-bots"s);
-                        Bot::allTarget(id);
-                    }
-                }
-                else
-                {
-                    downEvents.emplace(DownEvent::Type::Response);
-                    downEvents.back().message = L"print Ranked battle ended.\n"s +
-                                                L"You survived for: "s +
-                                                std::to_wstring(int(std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count())) +
-                                                L" seconds.\n"s;
-                    if (isDebuggerAttached())
-                    {
-                        std::cerr << "Debugger is attached." << std::endl;
-                        return L""s;
-                    }
-                    json body = {
-                        {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
-                        {"shipType", CommandProcessor::converter.to_bytes(shipType)},
-                        {"secret", deobfuscate(secret)},
-                        {"hash", resourceManager::getJSON("hash")}};
-
-                    if (httpFuture.valid())
-                        httpFuture.get();
-                    httpFuture = std::async(std::launch::async, [body]() {
-                        sf::Http http("http://starship-battle.herokuapp.com/");
-                        //sf::Http http("http://127.0.0.1/", 3000);
-                        sf::Http::Request request;
-                        sf::Http::Response response;
-
-                        request.setMethod(sf::Http::Request::Post);
-                        request.setUri("api/results/end");
-                        request.setHttpVersion(1, 1);
-                        request.setField("Content-Type", "application/json");
-                        if (isDebuggerAttached())
-                        {
-                            std::cerr << "Debugger is attached." << std::endl;
-                            return;
-                        }
-                        request.setBody(body.dump());
-                        response = http.sendRequest(request);
-
-                        if (response.getStatus() != sf::Http::Response::Created)
-                        {
-                            std::cerr << "Could not save score to server." << std::endl;
-                            std::cerr << "Status: " << response.getStatus() << std::endl;
-                            std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
-                            std::cerr << "Body: " << response.getBody() << std::endl;
-                        }
-                    });
-
-                    return L""s;
-                }
-                return L"next"s;
-            });
-            return L"setThisPlayerId "s + std::to_wstring(id) + L" print Spaceship for ranked battle is ready.\n"s;
+            Object::ObjectId id = rankedBattle.start(shipType, pilotName);
+            if (id)
+                return L"setThisPlayerId "s + std::to_wstring(id) + L" print Spaceship for ranked battle is ready.\n"s;
+            return L"print Debugger detected.\n"s;
         });
 
         return L"print Ranked battle mode.\nUse 'ranked-create [spaceship type] [pilot name]' to start ranked battle.\n\n"s;

@@ -11,6 +11,8 @@ before_build:
     - cmake .
 build_script:
     - cmake --build . --config Release
+after_build:
+    - sh: strip src/Release/starship_battle_game
 artifacts:
     - path: src/Release
       name: artifacts

@@ -40,14 +40,14 @@ public:
 
 inline sf::Packet& operator <<(sf::Packet& packet, const UpEvent& ev)
 {
-    return packet << (std::int32_t)ev.type << ev.targetId << ev.state << ev.coords << ev.command;
+    return packet << static_cast<std::uint8_t>(ev.type) << ev.targetId << ev.state << ev.coords << ev.command;
 }
 
 inline sf::Packet& operator >>(sf::Packet& packet, UpEvent& ev)
 {
-    std::int32_t type;
+    std::uint8_t type;
     packet >> type >> ev.targetId >> ev.state >> ev.coords >> ev.command;
-    ev.type = (UpEvent::Type)type;
+    ev.type = static_cast<UpEvent::Type>(type);
     return packet;
 }
 
@@ -77,8 +77,8 @@ public:
         std::wstring playerId; 
         Vec2f coords;
         float reload;
-        std::int32_t hp;
-        std::int32_t maxHp;
+        std::int16_t hp;
+        std::int16_t maxHp;
     };
 
     const Player* findPlayer(Object::ObjectId id)
@@ -101,22 +101,22 @@ public:
 inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
 {
     const float* matrix;
-    packet << (std::int32_t)ev.type << (std::int32_t)ev.polygons.size();
+    packet << static_cast<std::uint8_t>(ev.type) << static_cast<std::uint16_t>(ev.polygons.size());
     for(const DownEvent::Polygon& polygon : ev.polygons)
     {
         matrix = polygon.states.transform.getMatrix();
         packet << matrix[0] << matrix[4] << matrix[12]
                << matrix[1] << matrix[5] << matrix[13]
                << matrix[3] << matrix[7] << matrix[15];
-        packet << (std::int32_t)polygon.vertices.getPrimitiveType() << (std::int32_t)polygon.vertices.getVertexCount();
+        packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount());
         for (size_t i = 0; i < polygon.vertices.getVertexCount(); i++)
         {
-            packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y
-            << polygon.vertices[i].color.r << polygon.vertices[i].color.g
-            << polygon.vertices[i].color.b << polygon.vertices[i].color.a; 
+            packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y;
+            //<< polygon.vertices[i].color.r << polygon.vertices[i].color.g
+            //<< polygon.vertices[i].color.b << polygon.vertices[i].color.a; 
         }
     }
-    packet << (std::int32_t)ev.players.size();
+    packet << static_cast<std::uint16_t>(ev.players.size());
     for(const DownEvent::Player& player : ev.players)
     {
         packet << player.id << player.playerId << player.coords << player.reload << player.hp << player.maxHp;
@@ -128,22 +128,25 @@ inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
 inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
 {
     float a00, a01, a02, a10, a11, a12, a20, a21, a22;
-    std::int32_t type, size;
+    std::uint8_t type;
+    std::uint16_t size;
     packet >> type >> size;
-    ev.type = (DownEvent::Type)type;
+    ev.type = static_cast<DownEvent::Type>(type);
     ev.polygons.resize(size);
     for(DownEvent::Polygon& polygon : ev.polygons)
     {
         packet >> a00 >> a01 >> a02 >> a10 >> a11 >> a12 >> a20 >> a21 >> a22;
         polygon.states.transform = sf::Transform(a00, a01, a02, a10, a11, a12, a20, a21, a22);
-        packet >> type >> size;
-        polygon.vertices.setPrimitiveType((sf::PrimitiveType)type);
-        polygon.vertices.resize(size);
-        for (std::int32_t i = 0; i < size; i++)
+        packet >> type;
+        polygon.vertices.setPrimitiveType(static_cast<sf::PrimitiveType>(type));
+        packet >> type; // Actually size, but uint8_t
+        polygon.vertices.resize(type);
+        for (std::uint16_t i = 0; i < type; i++)
         {
-            packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y
-            >> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
-            >> polygon.vertices[i].color.b >> polygon.vertices[i].color.a; 
+            packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y;
+            polygon.vertices[i].color = sf::Color::White; // There's only one color in this game
+            //>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
+            //>> polygon.vertices[i].color.b >> polygon.vertices[i].color.a; 
         }
     }
     packet >> size;
