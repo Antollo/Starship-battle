@@ -299,7 +299,11 @@
         "numeric": "cpp",
         "string_view": "cpp",
         "unordered_set": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "complex": "cpp",
+        "optional": "cpp",
+        "shared_mutex": "cpp",
+        "typeindex": "cpp"
     },
     "cSpell.words": [
         "beforeend",
