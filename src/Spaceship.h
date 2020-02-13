@@ -6,6 +6,7 @@
 #include "Object.h"
 #include "Turret.h"
 #include "Rock.h"
+#include "Shield.h"
 
 class Spaceship : public Object, public sf::Transformable
 {
@@ -14,7 +15,9 @@ public:
     {
         if (type.empty()) throw std::runtime_error("Type of spaceship was empty.");
         if (playerId.empty()) throw std::runtime_error("Commander ID was empty.");
-        return dynamic_cast<Spaceship*>(objects.emplace(counter, new Spaceship(type, playerId)).first->second.get());
+        auto spaceship = new Spaceship(type, playerId);
+        objects.emplace(spaceship->getId(), spaceship);
+        return spaceship;
     }
     const Object::TypeId getTypeId() const override
     {
@@ -65,10 +68,13 @@ public:
         {
                 jt = it++;
                 if (jt->second->getId() == getId())
-                {
                     jt->second->destroy = true;
-                    jt->second->process();
-                }
+        }
+
+        for (const auto& id: shields)
+        {
+            if(Object::objects.count(id))
+                Object::objects[id]->destroy = true;
         }
         
         Rock::create(polygon, body);
@@ -147,6 +153,16 @@ private:
             turrets.emplace_back(turret["type"].get<std::string>());
             turrets.back().setPosition(turret["x"].get<float>() * worldScale, turret["y"].get<float>() * worldScale);
         }
+
+        Shield *shield;
+        const auto& shieldsJson = jsonObject["shields"];
+
+        for (const auto& shieldJson : shieldsJson)
+        {
+            shield = Shield::create(shieldJson["points"].get<std::vector<Vec2f>>(), -getId());
+            shield->connect(body, shieldJson["x"].get<float>(), shieldJson["y"].get<float>());
+            shields.push_back(shield->getId());
+        }
     }
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {
@@ -198,6 +214,7 @@ private:
     b2MassData massData;
     float force, torque, reload, maxHp, hp, armor;
     std::vector<Turret> turrets;
+    std::vector<Object::ObjectId> shields;
     sf::Clock clock;
     friend class Bot;
     friend class ContactListener;

@@ -21,6 +21,7 @@
     "config": {
         "forge": {
             "packagerConfig": {
+                "icon": "./icon",
                 "win32metadata": {
                     "ProductName": "Starship battle",
                     "CompanyName": "Antollo"
@@ -71,6 +72,7 @@
         "electron-squirrel-startup": "^1.0.0",
         "get-json": "^1.0.1",
         "ip": "^1.1.5",
+        "os": "^0.1.1",
         "semver": "^6.3.0",
         "tableify": "^1.1.0"
     },

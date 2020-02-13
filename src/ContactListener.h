@@ -6,6 +6,7 @@
 #include "Bullet.h"
 #include <queue>
 #include "Event.h"
+#include "Stats.h"
 
 
 class ContactListener : public b2ContactListener
@@ -34,6 +35,7 @@ private:
                     spaceship = static_cast<Spaceship*>(bodyUserData);
                     break;
                 case Object::TypeId::Rock:
+                case Object::TypeId::Shield:
                     //resourceManager::playSound("stone.wav");
                 default:
                     break;
@@ -90,19 +92,19 @@ private:
             float penetration = bullet->penetration * Object::rng025(Object::mt);
             if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 18.f && penetration > spaceship->armor)
             {
+                Stats::damageDealt(bullet->getId(), std::min(damage, spaceship->hp));
+                Stats::hpLost(spaceship->getId(), std::min(damage, spaceship->hp));
+
                 bullet->destroy = true;
                 spaceship->hp -= damage;
-                //console << bullet->getId()
-                //<< L" hitted " << spaceship->getId()
-                //<< L" for " << damage
-                //<< L"\n";
-                //resourceManager::playSound("explosion.wav");
 
                 downEvents.emplace(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = true;
-                downEvents.back().message = dynamic_cast<Spaceship&>(*Object::objects[bullet->getId()]).playerId +
+                if (spaceship->getTypeId() != Object::TypeId::Bot || dynamic_cast<Bot*>(Object::objects[bullet->getId()].get()) == nullptr)
+                    downEvents.back().message = dynamic_cast<Spaceship&>(*Object::objects[bullet->getId()]).playerId +
                     L" hitted " + spaceship->playerId + L" for " + std::to_wstring((int)damage) + L"\n";
+                else downEvents.back().message = L"";
                 if (spaceship->hp <= 0.f)
                 {
                     downEvents.emplace(DownEvent::Type::Message);
@@ -123,7 +125,8 @@ private:
                 downEvents.emplace(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = false;
-                downEvents.back().message = spaceship->playerId + L" bounced the bullet\n";
+                downEvents.back().message = L"";
+                //downEvents.back().message = spaceship->playerId + L" bounced the bullet\n";
             }
             //downEvents.emplace(DownEvent::Type::Message);
             //downEvents.back().message = std::to_wstring((int)penetration) + L" " + std::to_wstring((int)spaceship->armor) + L" " + std::to_wstring((int)damage) + L" " + std::to_wstring((int)impactVelocity.getLength()) + L"\n";

@@ -44,11 +44,15 @@ public:
         Spaceship,
         Bullet,
         Bot,
-        Rock
+        Rock,
+        Shield
     };
     virtual const TypeId getTypeId() const { return TypeId::Invalid; };
     virtual Vec2f getCenterPosition() const = 0;
-    Object() : destroy(false), id(++counter){};
+    Object() : destroy(false), id(++counter){ 
+        if(counter == std::numeric_limits<Object::ObjectId>::max())
+        counter = 1;
+    };
     virtual ObjectId getId() { return id; }
     virtual void process()
     {

@@ -217,6 +217,7 @@
     },
     "files.associations": {
         "*.hpp": "cpp",
+        "*.ez": "easypt",
         "algorithm": "cpp",
         "chrono": "cpp",
         "cmath": "cpp",
@@ -303,7 +304,9 @@
         "complex": "cpp",
         "optional": "cpp",
         "shared_mutex": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "*.rh": "cpp",
+        "*.ipp": "cpp"
     },
     "cSpell.words": [
         "beforeend",

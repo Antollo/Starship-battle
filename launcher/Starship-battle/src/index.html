@@ -15,7 +15,8 @@
 
         h1 {
             text-align: center;
-            font-size: 32px;
+            font-size: 28px;
+            margin: 0;
         }
 
         h1::after {
@@ -58,7 +59,7 @@
 
         .big-button {
             text-align: center;
-            font-size: 26px;
+            font-size: 22px;
             border: 2px solid white;
             padding-top: 4px;
             padding-bottom: 4px;
@@ -153,13 +154,18 @@
         }
 
         #controls {
-            height: 70%;
+            height: 60%;
         }
 
         #buttons {
             flex-wrap: wrap;
             height: 100%;
             align-content: space-between;
+            display: flex;
+        }
+
+        #input {
+            width: 100%;
         }
     </style>
 </head>
@@ -186,6 +192,13 @@
                     title="Visit website">
                     Visit website
                 </div>
+                <div id="input">
+                    <label for="input-text"></label>
+                    <input id="input-text" type="text">
+                    <div class="button" id="ok" title="Ok">
+                        ok
+                    </div>
+                </div>
                 <!--<div class="button" id="server" title="Starts server session.">
                     start-server
                 </div>-->
@@ -203,13 +216,6 @@
                     </div>
                 </div>
 
-            </div>
-            <div id="input">
-                <label for="input-text"></label>
-                <input id="input-text" type="text">
-                <div class="button" id="ok" title="Ok">
-                    ok
-                </div>
             </div>
 
         </div>

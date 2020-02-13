@@ -1,7 +1,7 @@
 {
     "maxAngle": 40,
-    "bulletVelocity": 180,
-    "accuracy": 0.02,
+    "bulletVelocity": 360,
+    "accuracy": 0.01,
     "damage": 85,
     "penetration": 85,
     "origin": {
@@ -25,15 +25,15 @@
     "bulletShape": [
         {
             "x": 0,
-            "y": -0.2
+            "y": -0.1
         },
         {
-            "x": 1,
+            "x": 1.5,
             "y": 0
         },
         {
             "x": 0,
-            "y": 0.2
+            "y": 0.1
         }
     ] 
 

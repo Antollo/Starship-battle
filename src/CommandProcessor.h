@@ -11,6 +11,7 @@
 #include <memory>
 #include <type_traits>
 #include "Console.h"
+#include "Stats.h"
 
 #include <string>
 #include "Bot.h"
@@ -119,6 +120,9 @@ private:
     std::list<std::unique_ptr<CallableBase>> jobs;
     std::list<std::unique_ptr<CallableBase>>::iterator it, jt;
     std::wstringstream inputsStream;
+
+    static constexpr float width = 20.f; // Half of width
+    static constexpr float pos = 400.f;
 };
 
 inline void CommandProcessor::init(CommandProcessor& commandProcessor)
@@ -133,6 +137,14 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
         return L"print Bot is ready.\n"s;
     });
 
+    commandProcessor.bind(L"create-random-bot", [](std::wstring shipType) {
+        json jsonObject = resourceManager::getJSON("config");
+        std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
+        std::size_t i = float(spaceships.size()) * Object::rng01(Object::mt);
+        Bot::create(spaceships[i]);
+        return L"print Bot is ready.\n"s;
+    });
+
     commandProcessor.bind(L"create-bots", []() {
         json jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
@@ -142,6 +154,58 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
             Bot::create(name);
         }
         return L"print Bots are ready.\n"s;
+    });
+
+    commandProcessor.bind(L"create-team", [](std::wstring teamName) {
+        Stats::addTeam(teamName);
+        return L"print Team " + teamName + L" created.\n"s;
+    });
+
+    commandProcessor.bind(L"join-team", [](std::wstring teamName, Object::ObjectId id) {
+        if (Stats::joinTeam(teamName, id))
+            return L"print Welcome in "s + teamName + L".\n";
+        return L"print Joining team failed.\nYou don't have a spaceship or there's no such team.\n"s;
+    });
+
+    commandProcessor.bind(L"team-stats", [](std::wstring teamName, Object::ObjectId id) {
+        std::wstring res = L"print Stats:\n";
+        Stats::forEach([&res](const std::wstring& teamName, const Stats& stats){
+            res += teamName + L"\n";
+            res += L"    Damage dealt: " + std::to_wstring(std::lround(stats.damage)) + L"\n";
+            res += L"    Hp lost:      " + std::to_wstring(std::lround(stats.hp)) + L"\n";
+            res += L"    Pilots:       ";
+            for (const auto& pilotName : stats.pilots)
+                 res += pilotName + L" ";
+            res += L"\n";
+        });
+        return res;
+    });
+
+    commandProcessor.bind(L"borders", []() {
+        Rock::create({{-width, pos - width}, {width, pos + width}, {-width, -pos + width}, {width, -pos - width}}, pos, 0.f);
+        Rock::create({{-width, pos + width}, {width, pos - width}, {-width, -pos - width}, {width, -pos + width}}, -pos, 0.f);
+        Rock::create({{pos - width, -width}, {pos + width, width}, {-pos + width, -width}, {-pos - width, width}}, 0.f, pos);
+        Rock::create({{pos + width, -width}, {pos - width, width}, {-pos - width, -width}, {-pos + width, width}}, 0.f, -pos);
+        return L""s;
+    });
+
+    commandProcessor.bind(L"bots-battle", [&commandProcessor]() {
+        Object::destroyAll();
+        std::size_t n = 60;
+        while (n--)
+            Rock::create();
+            
+        commandProcessor.call(L"borders"s);
+
+        n = 10;
+        while(n--)
+            commandProcessor.call(L"create-bots"s);
+
+        for (const auto& obj : Object::objects)
+            if (obj.second->getTypeId() == Object::TypeId::Bot)
+                Bot::allTarget(obj.second->getId());
+        
+        return L"print Bots battle started.\n"s;
     });
 
     commandProcessor.bind(L"credits", []() {
@@ -163,7 +227,7 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
 
     commandProcessor.bind(L"list-spaceships", []() {
         std::wstring res = L"print "s;
-       const json& jsonObject = resourceManager::getJSON("config");
+        const json& jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
         for (const auto &name : spaceships)
         {
@@ -177,7 +241,7 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
         return L"print Server beeped.\n"s;
     });
     
-    commandProcessor.bind(L"help", [](std::wstring arg) {
+    commandProcessor.bind(L"help", []() {
         return L"print \n"
                L"Spaceship commander command prompt\n"
                L"Remote server, version from " +
@@ -194,12 +258,16 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
                L"    create [spaceship type] [pilot name] (aliased as 'c')\n"
                L"    create-bot [spaceship type]          (aliased as 'cb')\n"
                L"    create-bots                          (aliased as 'cbs')\n"
+               L"    create-random-bot                    \n"
                L"    list-spaceships                      (aliased as 'ls')\n"
                L"    help                                 (aliased as 'h')\n"
-               L"    delete                              \n"
-               L"    help                                \n"
-               L"    credits                             \n"
-               L"    beep                                \n"s;
+               L"    bots-battle                          \n"
+               L"    create-team [team name]              (aliased as 'ct')\n"
+               L"    join-team [team name]                (aliased as 'jt')\n"
+               L"    team-stats                           (aliased as 's')\n"
+               L"    delete                               \n"
+               L"    credits                              \n"
+               L"    beep                                 \n"s;
     });
 
     commandProcessor.alias(L"create", L"c");
@@ -207,6 +275,9 @@ inline void CommandProcessor::init(CommandProcessor& commandProcessor)
     commandProcessor.alias(L"create-bots", L"cbs");
     commandProcessor.alias(L"list-spaceships", L"ls");
     commandProcessor.alias(L"help", L"h");
+    commandProcessor.alias(L"create-team", L"ct");
+    commandProcessor.alias(L"join-team", L"jt");
+    commandProcessor.alias(L"team-stats", L"s");
 }
 
 #endif

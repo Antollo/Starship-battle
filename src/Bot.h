@@ -11,7 +11,9 @@ public:
     static Bot* create(const std::string& type)
     {
         if (type.empty()) throw std::runtime_error("Type of spaceship was empty.");
-        return dynamic_cast<Bot*>(objects.emplace(counter, new Bot(type)).first->second.get());
+        auto bot = new Bot(type);
+        objects.emplace(bot->getId(), bot);
+        return bot;
     }
     const Object::TypeId getTypeId() const override
     {
@@ -38,7 +40,7 @@ public:
         if (newAimCoords != Vec2f{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()})
         {
             aim = true;
-            aimCoords = newAimCoords;
+            aimCoords = newAimCoords; //+ Vec2f{worldScale * (rng01(mt) - 0.5f), worldScale * (rng01(mt) - 0.5f)};
             float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
             while (aimAngle > pi) aimAngle -= 2.f * pi;
             while (aimAngle < -pi) aimAngle += 2.f * pi;
@@ -48,13 +50,13 @@ public:
             else
                 shoot = false;
 
-            if (aimAngle < -0.7f)
+            if (aimAngle < -0.6f)
             {
                 right = false;
                 left = true;
                 forward = false;
             }
-            else if (aimAngle > 0.7f)
+            else if (aimAngle > 0.6f)
             {
                 right = true;
                 left = false;
@@ -84,12 +86,8 @@ public:
     static void allTarget(const Object::ObjectId& id)
     {
         for (auto& obj : objects)
-        {
-            if (obj.second->getTypeId() == Object::TypeId::Bot)
-            {
-                dynamic_cast<Bot&>(*obj.second).target(id);
-            }
-        }
+            if (obj.second->getTypeId() == Object::TypeId::Bot && obj.second->getId() != id)
+                    dynamic_cast<Bot&>(*obj.second).target(id);
     }
     ~Bot() override
     {

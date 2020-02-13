@@ -4,7 +4,7 @@
     "force": 160,
     "torque": 70,
     "friction": 0.5,
-    "density": 6,
+    "density": 5,
     "reload": 2,
     "hp": 560,
     "armor": 65,

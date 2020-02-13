@@ -21,10 +21,7 @@ public:
         while (n--)
             Rock::create();
 
-        Rock::create({{-width, pos - width}, {width, pos + width}, {-width, -pos + width}, {width, -pos - width}}, pos, 0.f);
-        Rock::create({{-width, pos + width}, {width, pos - width}, {-width, -pos - width}, {width, -pos + width}}, -pos, 0.f);
-        Rock::create({{pos - width, -width}, {pos + width, width}, {-pos + width, -width}, {-pos - width, width}}, 0.f, pos);
-        Rock::create({{pos + width, -width}, {pos - width, width}, {-pos - width, -width}, {-pos + width, width}}, 0.f, -pos);
+        commandProcessor.call(L"borders"s);
 
         Object::ObjectId id = Spaceship::create(CommandProcessor::converter.to_bytes(shipType), pilotName)->getId();
 
@@ -67,12 +64,12 @@ public:
             if (Object::objects.count(id) == 1)
             {
                 now = std::chrono::steady_clock::now();
-                if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 60.f)
+                if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 15.f)
                 {
                     helper = std::chrono::steady_clock::now();
                     downEvents.emplace(DownEvent::Type::Response);
-                    downEvents.back().message = L"print Warning! Spawning new enemies!\n"s;
-                    commandProcessor.call(L"create-bots"s);
+                    downEvents.back().message = L"print Warning! Spawning new enemy!\n"s;
+                    commandProcessor.call(L"create-random-bot"s);
                     Bot::allTarget(id);
                 }
             }
@@ -134,9 +131,6 @@ private:
     std::chrono::steady_clock::time_point helper;
     std::chrono::steady_clock::time_point now;
     std::future<void> httpFuture;
-
-    static constexpr float width = 20.f; // Half of width
-    static constexpr float pos = 400.f;
 };
 
 #endif /* !RANKEDBATTLE_H_ */

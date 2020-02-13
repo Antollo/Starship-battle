@@ -5,8 +5,8 @@
     "torque": 70,
     "friction": 0.5,
     "density": 7.5,
-    "reload": 2.5,
-    "hp": 540,
+    "reload": 2.2,
+    "hp": 560,
     "armor": 65,
     "points": [
         {

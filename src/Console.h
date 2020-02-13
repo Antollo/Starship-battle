@@ -28,9 +28,9 @@ public:
         textOutput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
         textInput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
         notificationOutput.setFont(resourceManager::getFont("UbuntuMono.ttf"));
-        textOutput.setCharacterSize(18);
-        textInput.setCharacterSize(18);
-        notificationOutput.setCharacterSize(18);
+        textOutput.setCharacterSize(20);
+        textInput.setCharacterSize(20);
+        notificationOutput.setCharacterSize(20);
         textOutput.setFillColor(sf::Color::White);
         textInput.setFillColor(sf::Color::White);
         notificationOutput.setFillColor(sf::Color::White);
@@ -49,6 +49,7 @@ public:
         textOutput.setString(textOutput.getString() + std::to_wstring(out));
         notificationOutput.setString(std::to_wstring(out));
         std::wcout << std::to_wstring(out);
+        eraseOldOut();
         correctOrigin();
         return *this;
     }
@@ -57,6 +58,7 @@ public:
         textOutput.setString(textOutput.getString() + out);
         notificationOutput.setString(out);
         std::wcout << out;
+        eraseOldOut();
         correctOrigin();
         return *this;
     }
@@ -65,6 +67,7 @@ public:
         textOutput.setString(textOutput.getString() + out);
         notificationOutput.setString(out);
         std::wcout << out;
+        eraseOldOut();
         correctOrigin();
         return *this;
     }
@@ -187,6 +190,11 @@ private:
         notificationOutput.setOrigin(0, (float) notificationOutput.getCharacterSize() * (1 + std::count(notificationOutput.getString().begin(), notificationOutput.getString().end(), '\n')));
         textOutput.setOrigin(0, (float) textOutput.getCharacterSize() * (1 + std::count(textOutput.getString().begin(), textOutput.getString().end(), '\n')));
         textInput.setOrigin(0, (float) textInput.getCharacterSize());
+    }
+    void eraseOldOut()
+    {
+        if(textOutput.getString().getSize() > 5000)
+            textOutput.setString(textOutput.getString().substring(textOutput.getString().getSize() - 3000));
     }
     mutable sf::Text textOutput, notificationOutput, textInput;
     std::queue<std::wstring> entered;

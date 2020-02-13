@@ -1,6 +1,6 @@
 {
     "maxAngle": 180,
-    "bulletVelocity": 44,
+    "bulletVelocity": 50,
     "accuracy": 0.1,
     "damage": 130,
     "penetration": 70,

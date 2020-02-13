@@ -2,12 +2,11 @@ module.exports = async () => {
     const customTitlebar = require('custom-electron-titlebar');
     const AdmZip = require('adm-zip');
     const fs = require('fs');
-    const ip = require('ip');
     const { spawn, ChildProcess } = require('child_process');
     const { ipcRenderer, remote, shell } = require('electron');
-    const tableify = require('tableify');
     const getJSON = require('get-json');
     const semver = require('semver');
+    const os = require('os');
 
 
     new customTitlebar.Titlebar({
@@ -39,7 +38,7 @@ module.exports = async () => {
     async function dialog(description) {
         document.querySelector('#input>label').textContent = description;
         //document.getElementById('buttons').setAttribute('hidden', '');
-        document.getElementById('buttons').style.display = 'none';
+        document.querySelectorAll('.big-button').forEach(e => e.style.display = 'none');
         //document.getElementById('input').removeAttribute('hidden');
         document.getElementById('input').style.display = '';
         return await new Promise((resolve, reject) => {
@@ -49,7 +48,7 @@ module.exports = async () => {
                 //document.getElementById('input').setAttribute('hidden', '');
                 document.getElementById('input').style.display = 'none';
                 //document.getElementById('buttons').removeAttribute('hidden');
-                document.getElementById('buttons').style.display = 'flex';
+                document.querySelectorAll('.big-button').forEach(e => e.style.display = '');
             }, { once: true });
         });
     }
@@ -101,7 +100,6 @@ module.exports = async () => {
         });
     });*/
 
-    document.getElementById('buttons').style.display = 'flex';
     document.getElementById('input').style.display = 'none';
 
     document.getElementById('client').addEventListener('click', async () => {
@@ -112,8 +110,8 @@ module.exports = async () => {
             'ip', ip,
             'port', '1717'
         ], {
-                cwd: __dirname + '/'
-            });
+            cwd: __dirname + '/'
+        });
 
         client.stdout.on('data', (data) => {
             extendedLog('Client', data);
@@ -141,8 +139,8 @@ module.exports = async () => {
             'ip', '127.0.0.1',
             'port', '1717'
         ], {
-                cwd: __dirname + '/'
-            });
+            cwd: __dirname + '/'
+        });
 
         server.stdout.on('data', (data) => {
             extendedLog('Server', data);
@@ -178,8 +176,8 @@ module.exports = async () => {
             'port', '1717',
             'command', 'ranked'
         ], {
-                cwd: __dirname + '/'
-            });
+            cwd: __dirname + '/'
+        });
 
         server.stdout.on('data', (data) => {
             extendedLog('Server', data);
@@ -241,5 +239,15 @@ module.exports = async () => {
     } else {
         log('Need to download the game.');
         download();
+    }
+
+    log('\nLocal Ip:')
+    const networkInterfaces = Object.entries(os.networkInterfaces())
+    for (const [name, infos] of networkInterfaces) {
+        for (const info of infos) {
+            if ('IPv4' !== info.family || info.internal !== false) continue;
+            log(name + '  ' + info.address);
+            break;
+        }
     }
 };

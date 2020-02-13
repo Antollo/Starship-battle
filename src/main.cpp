@@ -59,7 +59,7 @@ int main(int argc, const char *argv[])
             }
         }
         text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
-        text.setCharacterSize(18);
+        text.setCharacterSize(20);
         text.setFillColor(sf::Color::White);
     }
     Client client(socket);
@@ -81,39 +81,14 @@ int main(int argc, const char *argv[])
     commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {      
         static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
         Object::destroyAll();
-        commandProcessor.bind(L"ranked-create", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
+        commandProcessor.bind(L"create-ranked", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
             Object::ObjectId id = rankedBattle.start(shipType, pilotName);
             if (id)
                 return L"setThisPlayerId "s + std::to_wstring(id) + L" print Spaceship for ranked battle is ready.\n"s;
             return L"print Debugger detected.\n"s;
         });
 
-        return L"print Ranked battle mode.\nUse 'ranked-create [spaceship type] [pilot name]' to start ranked battle.\n\n"s;
-    });
-
-    // Job printing each letter of its arg in next server tick
-    commandProcessor.bind(L"job-api-test", [&commandProcessor, &downEvents](std::wstring arg) {
-        commandProcessor.job([&downEvents, arg]() {
-            //Static persistant variables
-            static std::wstring str = arg;
-
-            // downEvents.emplace(DownEvent::Type::Response) == Write to all connected consoles
-
-            if (str.empty())
-            {
-                //Job ends when its return is empty
-                downEvents.emplace(DownEvent::Type::Response);
-                downEvents.back().message = L"print Job ended.\n"s;
-            }
-            else
-            {
-                downEvents.emplace(DownEvent::Type::Response);
-                downEvents.back().message = L"print "s + str.back() + L"\n"s;
-                str.pop_back();
-            }
-            return str;
-        });
-        return L"print Job started.\n"s;
+        return L"print Ranked battle mode.\nUse 'create-ranked [spaceship type] [pilot name]' to start ranked battle.\n\n"s;
     });
 
     //"Welcome screen":
@@ -151,17 +126,22 @@ int main(int argc, const char *argv[])
             antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
         }
 
-        resourceManager::playSound("glitch.wav");
+        sf::Image icon;
+        icon.loadFromFile("icon.png");
+
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
         window.setVerticalSyncEnabled(true);
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
+        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
 
         if (args["command"].size())
         {
             upEvents.emplace(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
         }
+
+        //resourceManager::playSound("glitch.wav");
     }
 
     std::cout << std::flush;
@@ -190,11 +170,11 @@ int main(int argc, const char *argv[])
             if (event.type == sf::Event::MouseWheelScrolled)
             {
                 sf::View view = window.getView();
-                if (event.mouseWheelScroll.delta * m < 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y < 0.25f)
+                if (event.mouseWheelScroll.delta * m < 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y < 0.1f)
                     break;
-                if (event.mouseWheelScroll.delta * m > 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y > 32.f)
+                if (event.mouseWheelScroll.delta * m > 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y > 48.f)
                     break;
-                view.zoom((event.mouseWheelScroll.delta * m > 0.f) * 1.2f + (event.mouseWheelScroll.delta * m < 0) * 0.8f);
+                view.zoom((event.mouseWheelScroll.delta * m > 0.f) * 1.1f + (event.mouseWheelScroll.delta * m < 0) * 0.9f);
                 window.setView(view);
             }
             //Player control events
@@ -309,7 +289,7 @@ int main(int argc, const char *argv[])
         if (!serverSide)
         {
             if (console.isTextEntered())
-                upEvents.emplace(UpEvent::Type::Command, console.get());
+                upEvents.emplace(UpEvent::Type::Command, console.get() + L" " + std::to_wstring(Object::thisPlayerId));
             //console << commandProcessor.call(console.get());
 
             if (rightMouseButtonDown)
@@ -344,10 +324,11 @@ int main(int argc, const char *argv[])
                     {
                         resourceManager::playSound("explosion.wav");
                         particleSystem.impulse(downEvent.collision);
+                        if (downEvent.message.size())
+                            console << downEvent.message;
                     }
                     else
                         resourceManager::playSound("ricochet.ogg");
-                    console << downEvent.message;
                     break;
                 case DownEvent::Type::Message:
                     console << downEvent.message;
@@ -410,7 +391,7 @@ int main(int argc, const char *argv[])
 
             particleSystem.update(delta);
 
-            fps = (2.f * fps + 1.f / delta) / 3.f;
+            fps = (5.f * fps + 1.f / delta) / 6.f;
             text.setString(L"Fps: "s + std::to_wstring((int)std::roundf(fps)));
             text.setScale(scale);
             text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 80, 18}));
