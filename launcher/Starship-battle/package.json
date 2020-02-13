@@ -1,7 +1,7 @@
 {
     "name": "starship-battle",
     "productName": "starship-battle",
-    "version": "0.2.1",
+    "version": "0.3.1",
     "description": "Starship battle game launcher",
     "main": "src/index.js",
     "scripts": {
@@ -45,7 +45,10 @@
                     "name": "@electron-forge/maker-squirrel",
                     "config": {
                         "certificateFile": "./cert.pfx",
-                        "certificatePassword": "12345678"
+                        "certificatePassword": "12345678",
+                        "loadingGif": "./loading.gif",
+                        "setupIcon": "./icon.ico",
+                        "iconUrl": "https://raw.githubusercontent.com/Antollo/Starship-battle/master/launcher/Starship-battle/icon.ico"
                     }
                 },
                 {
