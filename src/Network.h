@@ -20,7 +20,7 @@ public:
         if (selector.wait(timeout))
             if (selector.isReady(socket))
                 return socket.receive(packet);
-        return sf::Socket::Error;
+        return sf::Socket::NotReady;
     }
     
     sf::Socket::Status send(sf::Packet& packet)

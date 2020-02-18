@@ -54,10 +54,7 @@ public:
         counter = 1;
     };
     virtual ObjectId getId() { return id; }
-    virtual void process()
-    {
-        //if (destroy) onDestroy();
-    }
+    virtual void process() = 0;
     void checkDestroy()
     {
         if (destroy)

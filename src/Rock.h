@@ -40,7 +40,6 @@ public:
         setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
         setRotation(body->GetAngle() * 180.f / pi);
         setOrigin(0, 0);
-        Object::process();
     }
 private:
     Rock()

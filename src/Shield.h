@@ -34,7 +34,6 @@ public:
         setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
         setRotation(body->GetAngle() * 180.f / pi);
         setOrigin(0, 0);
-        Object::process();
     }
     void connect(b2Body *shipBody, float x, float y)
     {

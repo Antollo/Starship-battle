@@ -10,7 +10,7 @@ template <class S>
 class RankedBattle
 {
 public:
-    RankedBattle(CommandProcessor &newCommandProcessor, std::queue<DownEvent> &newDownEvents, const S &newSecret)
+    RankedBattle(CommandProcessor &newCommandProcessor, std::vector<DownEvent> &newDownEvents, const S &newSecret)
         : commandProcessor(newCommandProcessor), downEvents(newDownEvents), secret(newSecret) {}
 
     Object::ObjectId start(const std::wstring shipType, const std::wstring pilotName)
@@ -67,7 +67,7 @@ public:
                 if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 15.f)
                 {
                     helper = std::chrono::steady_clock::now();
-                    downEvents.emplace(DownEvent::Type::Response);
+                    downEvents.emplace_back(DownEvent::Type::Response);
                     downEvents.back().message = L"print Warning! Spawning new enemy!\n"s;
                     commandProcessor.call(L"create-random-bot"s);
                     Bot::allTarget(id);
@@ -75,7 +75,7 @@ public:
             }
             else
             {
-                downEvents.emplace(DownEvent::Type::Response);
+                downEvents.emplace_back(DownEvent::Type::Response);
                 downEvents.back().message = L"print Ranked battle ended.\n"s +
                                             L"You survived for: "s +
                                             std::to_wstring(int(std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count())) +
@@ -125,7 +125,7 @@ public:
 
 private:
     CommandProcessor &commandProcessor;
-    std::queue<DownEvent> &downEvents;
+    std::vector<DownEvent> &downEvents;
     const S &secret;
     std::chrono::steady_clock::time_point begin;
     std::chrono::steady_clock::time_point helper;

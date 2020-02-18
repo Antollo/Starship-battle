@@ -1,7 +1,6 @@
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 
 #include <chrono>
-#include <queue>
 #include <string>
 #include <future>
 #include <SFML/Graphics.hpp>
@@ -20,6 +19,7 @@
 #include "secret.h"
 #include "protector.h"
 #include "RankedBattle.h"
+#include "PerformanceLevels.h"
 
 int main(int argc, const char *argv[])
 {
@@ -27,7 +27,7 @@ int main(int argc, const char *argv[])
     static_assert(sizeof(sf::Vector2f) == sizeof(Vec2f));
 
     Args args(argc, argv);
-    int tick = 0, upEventCounter = 0;
+    int upEventCounter = 0;
     bool serverSide = (args["server"].size());
     int port = std::stoi(args["port"]);
 
@@ -43,9 +43,10 @@ int main(int argc, const char *argv[])
     Server server(listener);
     RenderSerializer renderSerializer; //"Display" to Packet
     UpEvent upEvent;
-    std::queue<DownEvent> downEvents;
+    std::vector<DownEvent> downEvents;
 
     sf::TcpSocket socket; //Client
+    sf::Socket::Status socketStatus;
     sf::Text text;
     if (!serverSide)
     {
@@ -69,7 +70,7 @@ int main(int argc, const char *argv[])
     decltype(Object::objects)::iterator i, j;
     float m = 1.f;
     Vec2f scale;
-    std::queue<UpEvent> upEvents;
+    std::vector<UpEvent> upEvents;
 
     sf::RenderWindow window; //Graphic window
     float fps = 0.f;
@@ -78,7 +79,7 @@ int main(int argc, const char *argv[])
 
     constexpr const auto secret = obfuscate(SECRET);
 
-    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {      
+    commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
         static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
         Object::destroyAll();
         commandProcessor.bind(L"create-ranked", [&commandProcessor, &downEvents, &secret](std::wstring shipType, std::wstring pilotName) {
@@ -109,7 +110,9 @@ int main(int argc, const char *argv[])
 
     //For physics:
     std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
-    float delta = 0.f;
+    float delta = 0.f, timePassed = 0.f;
+    int velocityIterations = 8, positionIterations = 3, ticks = 0;
+    PerformanceLevels::Id performanceLevelId = PerformanceLevels::Id::Normal;
     ContactListener contactListener(downEvents);
     Object::world.SetContactListener(&contactListener);
     sf::Event event;
@@ -138,7 +141,7 @@ int main(int argc, const char *argv[])
 
         if (args["command"].size())
         {
-            upEvents.emplace(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
+            upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
         }
 
         //resourceManager::playSound("glitch.wav");
@@ -186,13 +189,13 @@ int main(int argc, const char *argv[])
                     switch (event.key.code)
                     {
                     case sf::Keyboard::W:
-                        upEvents.emplace(UpEvent::Type::Forward, Object::thisPlayerId, ev);
+                        upEvents.emplace_back(UpEvent::Type::Forward, Object::thisPlayerId, ev);
                         break;
                     case sf::Keyboard::A:
-                        upEvents.emplace(UpEvent::Type::Left, Object::thisPlayerId, ev);
+                        upEvents.emplace_back(UpEvent::Type::Left, Object::thisPlayerId, ev);
                         break;
                     case sf::Keyboard::D:
-                        upEvents.emplace(UpEvent::Type::Right, Object::thisPlayerId, ev);
+                        upEvents.emplace_back(UpEvent::Type::Right, Object::thisPlayerId, ev);
                         break;
                     default:
                         break;
@@ -205,10 +208,10 @@ int main(int argc, const char *argv[])
                     {
                     case sf::Mouse::Button::Right:
                         rightMouseButtonDown = ev;
-                        upEvents.emplace(UpEvent::Type::Aim, Object::thisPlayerId, ev);
+                        upEvents.emplace_back(UpEvent::Type::Aim, Object::thisPlayerId, ev);
                         break;
                     case sf::Mouse::Button::Left:
-                        upEvents.emplace(UpEvent::Type::Shoot, Object::thisPlayerId, ev);
+                        upEvents.emplace_back(UpEvent::Type::Shoot, Object::thisPlayerId, ev);
                         break;
                     }
                 }
@@ -218,6 +221,9 @@ int main(int argc, const char *argv[])
         now = std::chrono::high_resolution_clock::now();
         delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
         last = now;
+        timePassed += delta;
+        fps = (5.f * fps + 1.f / delta) / 6.f;
+        ticks++;
 
         //Server side
         if (serverSide)
@@ -267,7 +273,7 @@ int main(int argc, const char *argv[])
 
             Object::processAll();
 
-            Object::world.Step(delta, 8, 3);
+            Object::world.Step(delta, velocityIterations, positionIterations);
 
             renderSerializer.clear();
             for (const auto &object : Object::objects)
@@ -275,13 +281,13 @@ int main(int argc, const char *argv[])
             packet.clear();
             packet << renderSerializer.getDownEvent();
             server.respondActive(packet);
-            while (!downEvents.empty())
+            for (const auto &downEvent : downEvents)
             {
                 packet.clear();
-                packet << downEvents.front();
+                packet << downEvent;
                 server.send(packet);
-                downEvents.pop();
             }
+            downEvents.clear();
         }
         //...
 
@@ -289,26 +295,25 @@ int main(int argc, const char *argv[])
         if (!serverSide)
         {
             if (console.isTextEntered())
-                upEvents.emplace(UpEvent::Type::Command, console.get() + L" " + std::to_wstring(Object::thisPlayerId));
-            //console << commandProcessor.call(console.get());
+                upEvents.emplace_back(UpEvent::Type::Command, console.get() + L" " + std::to_wstring(Object::thisPlayerId));
 
             if (rightMouseButtonDown)
-                upEvents.emplace(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
+                upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
 
             if (upEvents.empty())
-                upEvents.emplace();
+                upEvents.emplace_back();
 
-            while (!upEvents.empty())
+            for (const auto &upEvent : upEvents)
             {
                 packet.clear();
-                packet << upEvents.front();
+                packet << upEvent;
                 client.send(packet);
-                upEvents.pop();
             }
+            upEvents.clear();
 
             directDrew = false;
 
-            while (client.receive(packet) == sf::Socket::Status::Done)
+            while ((socketStatus = client.receive(packet)) == sf::Socket::Status::Done)
             {
                 packet >> downEvent;
                 switch (downEvent.type)
@@ -355,6 +360,8 @@ int main(int argc, const char *argv[])
                     break;
                 }
             }
+            if (socketStatus == sf::Socket::Status::Disconnected)
+                console << L"Connection with server lost.\n";
 
             window.clear(sf::Color::Black);
 
@@ -391,7 +398,6 @@ int main(int argc, const char *argv[])
 
             particleSystem.update(delta);
 
-            fps = (5.f * fps + 1.f / delta) / 6.f;
             text.setString(L"Fps: "s + std::to_wstring((int)std::roundf(fps)));
             text.setScale(scale);
             text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 80, 18}));
@@ -404,15 +410,52 @@ int main(int argc, const char *argv[])
             window.display();
         }
         //...
-        tick++;
-        if (tick >= 10000)
+
+        if (timePassed >= 5.f)
         {
-            tick = 0;
             if (serverSide)
             {
-                std::cout << upEventCounter << " UpEvents received.\n";
+                fps = float(ticks) / timePassed;
+                std::cout << upEventCounter << " events received.\n";
+                std::cout << fps << " server frames per second.\n";
                 upEventCounter = 0;
+                if (fps >= 70.f)
+                {
+                    if (performanceLevelId != PerformanceLevels::Id::High)
+                    {
+                        std::cout << "High perforance level.\n";
+                        PerformanceLevels::set<PerformanceLevels::High>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
+                    }
+                }
+                else if (fps >= 30.f)
+                {
+                    if (performanceLevelId != PerformanceLevels::Id::Normal)
+                    {
+                        std::cout << "Normal perforance level.\n";
+                        PerformanceLevels::set<PerformanceLevels::Normal>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
+                    }
+                }
+                else
+                {
+                    if (performanceLevelId != PerformanceLevels::Id::Low)
+                    {
+                        std::cout << "Low perforance level.\n";
+                        PerformanceLevels::set<PerformanceLevels::Low>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
+                    }
+                }
             }
+            else
+            {
+                if (socketStatus == sf::Socket::Status::Disconnected)
+                {
+                    std::cout << std::flush;
+                    std::cerr << std::flush;
+                    break;
+                }
+            }
+
+            timePassed = 0.f;
+            ticks = 0;
             std::cout << std::flush;
             std::cerr << std::flush;
         }

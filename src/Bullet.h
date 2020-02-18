@@ -32,9 +32,9 @@ public:
         setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
         setRotation(body->GetAngle() * 180.f / pi);
         setOrigin(0, 0);
-		destroy = destroy || body->GetLinearVelocity().LengthSquared() < 0.5f;
-        Object::process();
+		destroy = destroy || body->GetLinearVelocity().LengthSquared() < minimumBulletVelocity;
     }
+    static inline float minimumBulletVelocity;
 private:
     Bullet(const std::vector<Vec2f>& points, const Vec2f& position, const float& angle, const float& newPenetration, const float& newDamage, const Vec2f& velocity, const int& index)
         : penetration(newPenetration), damage(newDamage)

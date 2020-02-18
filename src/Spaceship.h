@@ -92,7 +92,6 @@ public:
         if (aim) onAim();
         if (shoot) onShoot();
         if (hp < 0.f) destroy = true;
-        Object::process();
     }
     bool forward, left, right, aim, shoot;
     Vec2f aimCoords;

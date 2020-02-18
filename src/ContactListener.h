@@ -4,7 +4,7 @@
 #include "Spaceship.h"
 #include "Bot.h"
 #include "Bullet.h"
-#include <queue>
+#include <vector>
 #include "Event.h"
 #include "Stats.h"
 
@@ -12,7 +12,7 @@
 class ContactListener : public b2ContactListener
 {
 public:
-    ContactListener(std::queue<DownEvent>& newDownEvents)
+    ContactListener(std::vector<DownEvent>& newDownEvents)
         : downEvents(newDownEvents) {}
 private:
     void BeginContact(b2Contact* contact)
@@ -98,16 +98,16 @@ private:
                 bullet->destroy = true;
                 spaceship->hp -= damage;
 
-                downEvents.emplace(DownEvent::Type::Collision);
+                downEvents.emplace_back(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = true;
                 if (spaceship->getTypeId() != Object::TypeId::Bot || dynamic_cast<Bot*>(Object::objects[bullet->getId()].get()) == nullptr)
                     downEvents.back().message = dynamic_cast<Spaceship&>(*Object::objects[bullet->getId()]).playerId +
-                    L" hitted " + spaceship->playerId + L" for " + std::to_wstring((int)damage) + L"\n";
+                    L" hit " + spaceship->playerId + L" for " + std::to_wstring((int)damage) + L"\n";
                 else downEvents.back().message = L"";
                 if (spaceship->hp <= 0.f)
                 {
-                    downEvents.emplace(DownEvent::Type::Message);
+                    downEvents.emplace_back(DownEvent::Type::Message);
                     downEvents.back().message = spaceship->playerId + L" was warped to HQ\n";
                 }
 
@@ -122,7 +122,7 @@ private:
                 //<< L" bounced the bullet\n";
                 //resourceManager::playSound("ricochet.ogg");
 
-                downEvents.emplace(DownEvent::Type::Collision);
+                downEvents.emplace_back(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = false;
                 downEvents.back().message = L"";
@@ -136,7 +136,7 @@ private:
   
     void EndContact(b2Contact* contact)
     { }
-    std::queue<DownEvent>& downEvents;
+    std::vector<DownEvent>& downEvents;
 };
 
 #endif

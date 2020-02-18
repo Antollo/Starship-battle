@@ -7,11 +7,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 project(Starship_battle)
 
 if(MSVC)
-    add_compile_options(/O2 /W3 /MT)
+    add_compile_options(/O2 /W3 /MT /fp:fast)
     #/GL
 else()
     if(NOT CMAKE_BUILD_TYPE)
-        add_compile_options(-O3 -static-libgcc -static-libstdc++)
+        add_compile_options(-O3 -static-libgcc -static-libstdc++ -ffast-math)
     endif()
 endif()
 
