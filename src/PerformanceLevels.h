@@ -15,8 +15,8 @@ class High
 {
 public:
     static constexpr Id id = Id::High;
-    static constexpr int velocityIterations = 12;
-    static constexpr int positionIterations = 5;
+    static constexpr int velocityIterations = 10;
+    static constexpr int positionIterations = 6;
     static constexpr float minimumBulletVelocity = 0.5f;
 };
 
@@ -33,7 +33,7 @@ class Low
 {
 public:
     static constexpr Id id = Id::Low;
-    static constexpr int velocityIterations = 5;
+    static constexpr int velocityIterations = 6;
     static constexpr int positionIterations = 2;
     static constexpr float minimumBulletVelocity = 0.7f;
 };

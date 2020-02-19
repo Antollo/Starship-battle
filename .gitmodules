@@ -14,3 +14,6 @@
 [submodule "thirdparty/digestpp/digestpp"]
 	path = thirdparty/digestpp/digestpp
 	url = https://github.com/kerukuro/digestpp
+[submodule "thirdparty/Box2D-MT/Box2D-MT"]
+	path = thirdparty/Box2D-MT/Box2D-MT
+	url = https://github.com/jhoffman0x/Box2D-MT

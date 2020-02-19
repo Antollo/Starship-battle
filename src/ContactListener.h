@@ -8,31 +8,31 @@
 #include "Event.h"
 #include "Stats.h"
 
-
 class ContactListener : public b2ContactListener
 {
 public:
-    ContactListener(std::vector<DownEvent>& newDownEvents)
+    ContactListener(std::vector<DownEvent> &newDownEvents)
         : downEvents(newDownEvents) {}
-private:
-    void BeginContact(b2Contact* contact)
-    {
-        Spaceship* spaceship = nullptr;
-        Bullet* bullet = nullptr;
 
-        void* bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
+private:
+    void BeginContact(b2Contact *contact)
+    {
+        Spaceship *spaceship = nullptr;
+        Bullet *bullet = nullptr;
+
+        void *bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
         if (bodyUserData != nullptr)
         {
             if (bodyUserData)
             {
-                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                switch (static_cast<Object *>(bodyUserData)->getTypeId())
                 {
                 case Object::TypeId::Bullet:
-                    bullet = static_cast<Bullet*>(bodyUserData);
+                    bullet = static_cast<Bullet *>(bodyUserData);
                     break;
                 case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
                 case Object::TypeId::Bot:
-                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    spaceship = static_cast<Spaceship *>(bodyUserData);
                     break;
                 case Object::TypeId::Rock:
                 case Object::TypeId::Shield:
@@ -48,14 +48,14 @@ private:
         {
             if (bodyUserData)
             {
-                switch(static_cast<Object*>(bodyUserData)->getTypeId())
+                switch (static_cast<Object *>(bodyUserData)->getTypeId())
                 {
                 case Object::TypeId::Bullet:
-                    bullet = static_cast<Bullet*>(bodyUserData);
+                    bullet = static_cast<Bullet *>(bodyUserData);
                     break;
                 case Object::TypeId::Spaceship: //Intended behaviour (both are spaceships)
                 case Object::TypeId::Bot:
-                    spaceship = static_cast<Spaceship*>(bodyUserData);
+                    spaceship = static_cast<Spaceship *>(bodyUserData);
                     break;
                 case Object::TypeId::Rock:
                     //resourceManager::playSound("stone.wav");
@@ -64,7 +64,6 @@ private:
                 }
             }
         }
-
 
         if (spaceship != nullptr && bullet != nullptr)
         {
@@ -79,14 +78,14 @@ private:
 
             //particleSystem.impulse((sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale);
 
-
-            auto it = std::min_element(edges.begin(), edges.end(), [&collisionPos](const std::pair<Vec2f, Vec2f>& a, const std::pair<Vec2f, Vec2f>& b) {
+            auto it = std::min_element(edges.begin(), edges.end(), [&collisionPos](const std::pair<Vec2f, Vec2f> &a, const std::pair<Vec2f, Vec2f> &b) {
                 return a.first.getSquaredDistance(collisionPos) + a.second.getSquaredDistance(collisionPos) < b.first.getSquaredDistance(collisionPos) + b.second.getSquaredDistance(collisionPos);
             });
 
-            Vec2f edge {it->first.x - it->second.x, it->first.y - it->second.y};
-            float angle = std::atan2(impactVelocity.x*edge.y - impactVelocity.y*edge.x, impactVelocity.x*edge.x + impactVelocity.y*edge.y);
-            if (angle < 0.f) angle += 2.f *  pi;
+            Vec2f edge{it->first.x - it->second.x, it->first.y - it->second.y};
+            float angle = std::atan2(impactVelocity.x * edge.y - impactVelocity.y * edge.x, impactVelocity.x * edge.x + impactVelocity.y * edge.y);
+            if (angle < 0.f)
+                angle += 2.f * pi;
             //float damage = std::round(impactVelocity.getSquaredLength() * bullet->massData.mass / 2.f * Object::rng025(Object::mt));
             float damage = std::roundf(bullet->damage * Object::rng025(Object::mt));
             float penetration = bullet->penetration * Object::rng025(Object::mt);
@@ -101,10 +100,11 @@ private:
                 downEvents.emplace_back(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = true;
-                if (spaceship->getTypeId() != Object::TypeId::Bot || dynamic_cast<Bot*>(Object::objects[bullet->getId()].get()) == nullptr)
-                    downEvents.back().message = dynamic_cast<Spaceship&>(*Object::objects[bullet->getId()]).playerId +
-                    L" hit " + spaceship->playerId + L" for " + std::to_wstring((int)damage) + L"\n";
-                else downEvents.back().message = L"";
+                if (spaceship->getTypeId() != Object::TypeId::Bot || dynamic_cast<Bot *>(Object::objects[bullet->getId()].get()) == nullptr)
+                    downEvents.back().message = dynamic_cast<Spaceship &>(*Object::objects[bullet->getId()]).playerId +
+                                                L" hit " + spaceship->playerId + L" for " + std::to_wstring((int)damage) + L"\n";
+                else
+                    downEvents.back().message = L"";
                 if (spaceship->hp <= 0.f)
                 {
                     downEvents.emplace_back(DownEvent::Type::Message);
@@ -113,7 +113,7 @@ private:
 
                 if (spaceship->getTypeId() == Object::TypeId::Bot)
                 {
-                    dynamic_cast<Bot*>(spaceship)->target(bullet->getId());
+                    dynamic_cast<Bot *>(spaceship)->target(bullet->getId());
                 }
             }
             else
@@ -131,12 +131,14 @@ private:
             //downEvents.emplace(DownEvent::Type::Message);
             //downEvents.back().message = std::to_wstring((int)penetration) + L" " + std::to_wstring((int)spaceship->armor) + L" " + std::to_wstring((int)damage) + L" " + std::to_wstring((int)impactVelocity.getLength()) + L"\n";
         }
-  
     }
-  
-    void EndContact(b2Contact* contact)
-    { }
-    std::vector<DownEvent>& downEvents;
+
+    bool BeginContactImmediate(b2Contact *contact, uint32 threadId) { return true; }
+    bool EndContactImmediate(b2Contact *contact, uint32 threadId) { return false; }
+    bool PreSolveImmediate(b2Contact *contact, const b2Manifold *oldManifold, uint32 threadId) { return false; }
+    bool PostSolveImmediate(b2Contact *contact, const b2ContactImpulse *impulse, uint32 threadId) { return false; }
+    void EndContact(b2Contact *contact) {}
+    std::vector<DownEvent> &downEvents;
 };
 
 #endif

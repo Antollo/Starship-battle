@@ -3,7 +3,10 @@
 #include <chrono>
 #include <string>
 #include <future>
+#include <mutex>
+#include <atomic>
 #include <SFML/Graphics.hpp>
+#include <SFML/Config.hpp>
 #include "ContactListener.h"
 #include "Console.h"
 #include "Spaceship.h"
@@ -21,33 +24,51 @@
 #include "RankedBattle.h"
 #include "PerformanceLevels.h"
 
+#define SFML_DEFINE_DISCRETE_GPU_PREFERENCE
+
 int main(int argc, const char *argv[])
 {
     static_assert(sizeof(b2Vec2) == sizeof(Vec2f));
     static_assert(sizeof(sf::Vector2f) == sizeof(Vec2f));
 
+    // Client and server
     Args args(argc, argv);
-    int upEventCounter = 0;
     bool serverSide = (args["server"].size());
     int port = std::stoi(args["port"]);
+    std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
+    float delta = 0.f;
+    sf::Clock clock001, clock1;
+    int velocityIterations = 8, positionIterations = 3, ticks = 0;
+    float fps = 100.f;
+    sf::Socket::Status socketStatus;
+    std::atomic<bool> running = true;
+    std::future<void> receivingThread;
+    Console console; //This thing displaying text ui
+    console
+        << L"Spaceship commander command prompt\n"
+        << (serverSide ? L"Server, " : L"Client, ")
+        << L"version from " << CommandProcessor::converter.from_bytes(__DATE__) << L" " << CommandProcessor::converter.from_bytes(__TIME__) << L"\n"
+        << L"Use 'help' command to learn the basics.\n\n";
 
+    //Client
     Grid grid;
     Cursor cursor;
     ParticleSystem particleSystem;
-    Console console;                   //This thing displaying text ui
-    CommandProcessor commandProcessor; //For scripting in console (commands are run on server side)
-
-    sf::TcpListener listener; //Server
-    if (serverSide)
-        listener.listen(port);
-    Server server(listener);
-    RenderSerializer renderSerializer; //"Display" to Packet
-    UpEvent upEvent;
-    std::vector<DownEvent> downEvents;
-
-    sf::TcpSocket socket; //Client
-    sf::Socket::Status socketStatus;
+    sf::TcpSocket socket;
     sf::Text text;
+    DownEvent downEvent, downEventDirectDraw;
+    bool rightMouseButtonDown = false;
+    int alive = 0;
+    decltype(Object::objects)::iterator i, j;
+    float mouseScrollMultiplier = 1.f;
+    int antialiasingLevel = 16;
+    Vec2f scale;
+    std::vector<UpEvent> upEvents;
+    std::mutex clientMutex;
+    std::vector<DownEvent> downEventsBuffer;
+    sf::RenderWindow window; //Graphic window
+    sf::Image icon;
+
     if (!serverSide)
     {
         if (socket.connect(args["ip"], port) != sf::Socket::Status::Done)
@@ -59,26 +80,70 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
+    }
+    Client client(socket);
+    if (!serverSide)
+    {
         text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
         text.setCharacterSize(20);
         text.setFillColor(sf::Color::White);
+
+        std::ifstream file("config.json");
+        if (file.good())
+        {
+            json jsonObject = json::parse(file);
+            mouseScrollMultiplier = jsonObject["mouseScrollMultiplier"].get<float>();
+            antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
+        }
+
+        icon.loadFromFile("icon.png");
+        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
+        window.setFramerateLimit(60);
+        window.setMouseCursorVisible(false);
+        window.requestFocus();
+        window.setView({{0.f, 0.f}, window.getView().getSize()});
+        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+
+        if (args["command"].size())
+            upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
+
+        receivingThread = std::async(std::launch::async, [&client, &running, &clientMutex, &downEventsBuffer, &socketStatus]() {
+            sf::Packet packet;
+            DownEvent downEvent;
+            while (running)
+            {
+                {
+                    std::lock_guard<std::mutex> lk(clientMutex);
+                    while ((socketStatus = client.receive(packet)) == sf::Socket::Status::Done)
+                    {
+                        packet >> downEvent;
+                        downEventsBuffer.emplace_back(downEvent);
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::microseconds(1)); // It's bad but in fact it do what it should
+            }
+        });
     }
-    Client client(socket);
-    DownEvent downEvent, downEventDirectDraw;
-    bool directDrew = false, rightMouseButtonDown = false;
-    int alive = 0;
-    decltype(Object::objects)::iterator i, j;
-    float m = 1.f;
-    Vec2f scale;
-    std::vector<UpEvent> upEvents;
 
-    sf::RenderWindow window; //Graphic window
-    float fps = 0.f;
-
-    CommandProcessor::init(commandProcessor);
-
+    //Server
+    int upEventCounter = 0;
+    CommandProcessor commandProcessor; //For scripting in console (commands are run on server side)
+    sf::TcpListener listener;          //Server
+    if (serverSide)
+        listener.listen(port);
+    Server server(listener);
+    RenderSerializer renderSerializer; //"Display" to Packet
+    UpEvent upEvent;
+    std::vector<DownEvent> downEvents;
+    std::vector<std::pair<UpEvent, Server::iterator>> upEventsRespondable, upEventsRespondableBuffer;
+    std::mutex serverMutex;
+    PerformanceLevels::Id performanceLevelId = PerformanceLevels::Id::Normal;
+    ContactListener contactListener(downEvents);
+    Object::world.SetContactListener(&contactListener);
+    b2ThreadPoolTaskExecutor executor;
+    sf::Event event;
+    sf::Packet packet;
     constexpr const auto secret = obfuscate(SECRET);
-
     commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
         static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
         Object::destroyAll();
@@ -92,59 +157,29 @@ int main(int argc, const char *argv[])
         return L"print Ranked battle mode.\nUse 'create-ranked [spaceship type] [pilot name]' to start ranked battle.\n\n"s;
     });
 
-    //"Welcome screen":
-    console
-        << L"Spaceship commander command prompt\n"
-        << (serverSide ? L"Server, " : L"Client, ")
-        << L"version from " << CommandProcessor::converter.from_bytes(__DATE__) << L" " << CommandProcessor::converter.from_bytes(__TIME__) << L"\n"
-        << L"Use 'help' command to learn the basics.\n\n";
-
-    //Server:
-    //Create some rocks:
-    if (serverSide && args["server"] == "normal")
+    if (serverSide)
     {
         std::size_t n = 60;
         while (n--)
             Rock::create();
-    }
 
-    //For physics:
-    std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
-    float delta = 0.f, timePassed = 0.f;
-    int velocityIterations = 8, positionIterations = 3, ticks = 0;
-    PerformanceLevels::Id performanceLevelId = PerformanceLevels::Id::Normal;
-    ContactListener contactListener(downEvents);
-    Object::world.SetContactListener(&contactListener);
-    sf::Event event;
-    sf::Packet packet;
-
-    if (!serverSide)
-    {
-        int antialiasingLevel = 16;
-        std::ifstream file("config.json");
-        if (file.good())
-        {
-            json jsonObject = json::parse(file);
-            m = jsonObject["mouseScrollMultiplier"].get<float>();
-            antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
-        }
-
-        sf::Image icon;
-        icon.loadFromFile("icon.png");
-
-        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
-        window.setVerticalSyncEnabled(true);
-        window.setMouseCursorVisible(false);
-        window.requestFocus();
-        window.setView({{0.f, 0.f}, window.getView().getSize()});
-        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
-
-        if (args["command"].size())
-        {
-            upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
-        }
-
-        //resourceManager::playSound("glitch.wav");
+        receivingThread = std::async(std::launch::async, [&server, &running, &serverMutex, &upEventsRespondableBuffer]() {
+            sf::Packet packet;
+            Server::iterator it;
+            UpEvent upEvent;
+            while (running)
+            {
+                {
+                    std::lock_guard<std::mutex> lk(serverMutex);
+                    while (server.receive(packet, it) == sf::Socket::Status::Done)
+                    {
+                        packet >> upEvent;
+                        upEventsRespondableBuffer.emplace_back(upEvent, it);
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::microseconds(1)); // It's bad but in fact it do what it should
+            }
+        });
     }
 
     std::cout << std::flush;
@@ -152,6 +187,13 @@ int main(int argc, const char *argv[])
 
     while (window.isOpen() || serverSide)
     {
+        now = std::chrono::high_resolution_clock::now();
+        delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
+        last = now;
+        fps = (5.f * fps + 1.f / delta) / 6.f;
+        ticks++;
+
+        //client
         while (!serverSide && window.pollEvent(event))
         {
             //Local events
@@ -173,11 +215,11 @@ int main(int argc, const char *argv[])
             if (event.type == sf::Event::MouseWheelScrolled)
             {
                 sf::View view = window.getView();
-                if (event.mouseWheelScroll.delta * m < 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y < 0.1f)
+                if (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y < 0.1f)
                     break;
-                if (event.mouseWheelScroll.delta * m > 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y > 48.f)
+                if (event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y > 48.f)
                     break;
-                view.zoom((event.mouseWheelScroll.delta * m > 0.f) * 1.1f + (event.mouseWheelScroll.delta * m < 0) * 0.9f);
+                view.zoom((event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f) * 1.1f + (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0) * 0.9f);
                 window.setView(view);
             }
             //Player control events
@@ -218,79 +260,6 @@ int main(int argc, const char *argv[])
             }
         }
 
-        now = std::chrono::high_resolution_clock::now();
-        delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
-        last = now;
-        timePassed += delta;
-        fps = (5.f * fps + 1.f / delta) / 6.f;
-        ticks++;
-
-        //Server side
-        if (serverSide)
-        {
-            while (server.receive(packet) == sf::Socket::Status::Done)
-            {
-                packet >> upEvent;
-
-                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid)
-                {
-                    continue;
-                }
-
-                upEventCounter++;
-
-                switch (upEvent.type)
-                {
-                case UpEvent::Type::Forward:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).forward = upEvent.state;
-                    break;
-                case UpEvent::Type::Left:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).left = upEvent.state;
-                    break;
-                case UpEvent::Type::Right:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).right = upEvent.state;
-                    break;
-                case UpEvent::Type::Aim:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aim = upEvent.state;
-                    break;
-                case UpEvent::Type::Shoot:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).shoot = upEvent.state;
-                    break;
-                case UpEvent::Type::AimCoords:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aimCoords = upEvent.coords;
-                    break;
-                case UpEvent::Type::Command:
-                    DownEvent response(DownEvent::Type::Response);
-                    response.message = commandProcessor.call(upEvent.command);
-                    packet.clear();
-                    packet << response;
-                    server.respond(packet);
-                    break;
-                }
-            }
-
-            commandProcessor.processJobs();
-
-            Object::processAll();
-
-            Object::world.Step(delta, velocityIterations, positionIterations);
-
-            renderSerializer.clear();
-            for (const auto &object : Object::objects)
-                renderSerializer.draw(*(object.second));
-            packet.clear();
-            packet << renderSerializer.getDownEvent();
-            server.respondActive(packet);
-            for (const auto &downEvent : downEvents)
-            {
-                packet.clear();
-                packet << downEvent;
-                server.send(packet);
-            }
-            downEvents.clear();
-        }
-        //...
-
         //Client
         if (!serverSide)
         {
@@ -303,26 +272,37 @@ int main(int argc, const char *argv[])
             if (upEvents.empty())
                 upEvents.emplace_back();
 
-            for (const auto &upEvent : upEvents)
             {
-                packet.clear();
-                packet << upEvent;
-                client.send(packet);
+                std::lock_guard<std::mutex> lk(clientMutex);
+                for (const auto &upEvent : upEvents)
+                {
+                    packet.clear();
+                    packet << upEvent;
+                    client.send(packet);
+                }
             }
             upEvents.clear();
 
-            directDrew = false;
-
-            while ((socketStatus = client.receive(packet)) == sf::Socket::Status::Done)
             {
-                packet >> downEvent;
+                std::lock_guard<std::mutex> lk(clientMutex);
+                std::swap(downEvents, downEventsBuffer);
+                if (socketStatus == sf::Socket::Status::Disconnected)
+                {
+                    console << L"Connection with server lost.\n";
+                    if (clock1.getElapsedTime().asSeconds() >= 1.f)
+                    {
+                        std::cout << std::flush;
+                        break;
+                    }
+                }
+            }
+            for (auto &el : downEvents)
+            {
+                DownEvent &downEvent = el;
                 switch (downEvent.type)
                 {
                 case DownEvent::Type::DirectDraw:
-                    if (directDrew)
-                        break;
-                    directDrew = true;
-                    downEventDirectDraw = downEvent;
+                    downEventDirectDraw = std::move(downEvent);
                     break;
                 case DownEvent::Type::Collision:
                     if (downEvent.explosion)
@@ -356,12 +336,10 @@ int main(int argc, const char *argv[])
                             alive = 100;
                         }
                     }
-                    //console << downEvent.message;
                     break;
                 }
             }
-            if (socketStatus == sf::Socket::Status::Disconnected)
-                console << L"Connection with server lost.\n";
+            downEvents.clear();
 
             window.clear(sf::Color::Black);
 
@@ -387,22 +365,18 @@ int main(int argc, const char *argv[])
                 scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
             }
             else
-            {
                 alive--;
-            }
 
             for (const auto &polygon : downEventDirectDraw.polygons)
-            {
                 window.draw(polygon.vertices, polygon.states);
-            }
 
             particleSystem.update(delta);
 
             text.setString(L"Fps: "s + std::to_wstring((int)std::roundf(fps)));
             text.setScale(scale);
             text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 80, 18}));
-            window.draw(text);
 
+            window.draw(text);
             window.draw(grid);
             window.draw(cursor);
             window.draw(particleSystem);
@@ -411,13 +385,95 @@ int main(int argc, const char *argv[])
         }
         //...
 
-        if (timePassed >= 5.f)
+        //Server side
+        if (serverSide)
+        {
+            {
+                std::lock_guard<std::mutex> lk(serverMutex);
+                std::swap(upEventsRespondable, upEventsRespondableBuffer);
+            }
+            for (auto &el : upEventsRespondable)
+            {
+                UpEvent &upEvent = el.first;
+                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid)
+                    continue;
+                upEventCounter++;
+
+                switch (upEvent.type)
+                {
+                case UpEvent::Type::Forward:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).forward = upEvent.state;
+                    break;
+                case UpEvent::Type::Left:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).left = upEvent.state;
+                    break;
+                case UpEvent::Type::Right:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).right = upEvent.state;
+                    break;
+                case UpEvent::Type::Aim:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aim = upEvent.state;
+                    break;
+                case UpEvent::Type::Shoot:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).shoot = upEvent.state;
+                    break;
+                case UpEvent::Type::AimCoords:
+                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aimCoords = upEvent.coords;
+                    break;
+                case UpEvent::Type::Command:
+                    DownEvent response(DownEvent::Type::Response);
+                    response.message = commandProcessor.call(upEvent.command);
+                    packet.clear();
+                    packet << response;
+                    {
+                        std::lock_guard<std::mutex> lk(serverMutex);
+                        server.respond(packet, el.second);
+                    }
+                    break;
+                }
+            }
+            upEventsRespondable.clear();
+
+            commandProcessor.processJobs();
+            Object::processAll();
+            Object::world.Step(delta, velocityIterations, positionIterations, executor);
+
+            renderSerializer.clear();
+            for (const auto &object : Object::objects)
+                renderSerializer.draw(*(object.second));
+            packet.clear();
+            packet << renderSerializer.getDownEvent();
+
+            {
+                std::lock_guard<std::mutex> lk(serverMutex);
+                if (performanceLevelId == PerformanceLevels::Id::High)
+                {
+                    if (clock001.getElapsedTime().asSeconds() >= 0.01f)
+                    {
+                        server.send(packet);
+                        clock001.restart();
+                    }
+                }
+                else
+                    server.sendToActive(packet);
+
+                for (const auto &downEvent : downEvents)
+                {
+                    packet.clear();
+                    packet << downEvent;
+                    server.send(packet);
+                }
+            }
+            downEvents.clear();
+        }
+        //...
+
+        if (clock1.getElapsedTime().asSeconds() >= 1.f)
         {
             if (serverSide)
             {
-                fps = float(ticks) / timePassed;
+                fps = float(ticks) / clock1.getElapsedTime().asSeconds();
                 std::cout << upEventCounter << " events received.\n";
-                std::cout << fps << " server frames per second.\n";
+                std::cout << int(std::roundf(fps)) << " server frames per second.\n";
                 upEventCounter = 0;
                 if (fps >= 70.f)
                 {
@@ -427,7 +483,7 @@ int main(int argc, const char *argv[])
                         PerformanceLevels::set<PerformanceLevels::High>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
                     }
                 }
-                else if (fps >= 30.f)
+                else if (fps >= 40.f)
                 {
                     if (performanceLevelId != PerformanceLevels::Id::Normal)
                     {
@@ -446,20 +502,26 @@ int main(int argc, const char *argv[])
             }
             else
             {
-                if (socketStatus == sf::Socket::Status::Disconnected)
+                if (fps < 40.f && antialiasingLevel != 0)
                 {
-                    std::cout << std::flush;
-                    std::cerr << std::flush;
-                    break;
+                    antialiasingLevel /= 2;
+                    window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
+                    window.setFramerateLimit(60);
+                    window.setMouseCursorVisible(false);
+                    window.requestFocus();
+                    window.setView({{0.f, 0.f}, window.getView().getSize()});
+                    window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
                 }
             }
-
-            timePassed = 0.f;
+            clock1.restart();
             ticks = 0;
             std::cout << std::flush;
             std::cerr << std::flush;
         }
     }
+    running = false;
+    if (receivingThread.valid())
+        receivingThread.get();
     Object::objects.clear();
 
     return 0;

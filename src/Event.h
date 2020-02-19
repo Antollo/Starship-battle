@@ -5,24 +5,33 @@
 #include "Object.h"
 #include "Vec2f.h"
 
-class UpEvent {
+class UpEvent
+{
 public:
-    enum class Type {
-        Invalid, Forward, Left, Right, Aim, Shoot, AimCoords, Command
+    enum class Type
+    {
+        Invalid,
+        Forward,
+        Left,
+        Right,
+        Aim,
+        Shoot,
+        AimCoords,
+        Command
     };
-    UpEvent(const Type& newType, const Object::ObjectId& newTargetId, const bool& newState)
+    UpEvent(const Type &newType, const Object::ObjectId &newTargetId, const bool &newState)
         : type(newType), targetId(newTargetId), state(newState), coords(Vec2f(0.f, 0.f)), command(L"#")
     {
         assert(type != Type::AimCoords && type != Type::Command);
     }
 
-    UpEvent(const Type& newType, const Object::ObjectId& newTargetId, const Vec2f& newCoords)
-        : type(newType), targetId(newTargetId), state(false), coords(newCoords), command(L"#") 
+    UpEvent(const Type &newType, const Object::ObjectId &newTargetId, const Vec2f &newCoords)
+        : type(newType), targetId(newTargetId), state(false), coords(newCoords), command(L"#")
     {
         assert(type == Type::AimCoords);
     }
 
-    UpEvent(const Type& newType, const std::wstring& newCommand)
+    UpEvent(const Type &newType, const std::wstring &newCommand)
         : type(newType), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(newCommand)
     {
         assert(type == Type::Command);
@@ -30,7 +39,7 @@ public:
 
     UpEvent()
         : type(Type::Invalid), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(L"#") {}
-    
+
     Type type;
     Object::ObjectId targetId;
     bool state;
@@ -38,12 +47,12 @@ public:
     std::wstring command;
 };
 
-inline sf::Packet& operator <<(sf::Packet& packet, const UpEvent& ev)
+inline sf::Packet &operator<<(sf::Packet &packet, const UpEvent &ev)
 {
     return packet << static_cast<std::uint8_t>(ev.type) << ev.targetId << ev.state << ev.coords << ev.command;
 }
 
-inline sf::Packet& operator >>(sf::Packet& packet, UpEvent& ev)
+inline sf::Packet &operator>>(sf::Packet &packet, UpEvent &ev)
 {
     std::uint8_t type;
     packet >> type >> ev.targetId >> ev.state >> ev.coords >> ev.command;
@@ -51,13 +60,42 @@ inline sf::Packet& operator >>(sf::Packet& packet, UpEvent& ev)
     return packet;
 }
 
-class DownEvent {
+class DownEvent
+{
 public:
-    enum class Type {
-        Invalid, DirectDraw, Collision, Message, Response
+    enum class Type
+    {
+        Invalid,
+        DirectDraw,
+        Collision,
+        Message,
+        Response
     };
 
-    DownEvent(const Type& newType)
+    DownEvent(DownEvent &&downEvent)
+    {
+        type = downEvent.type;
+        std::swap(polygons, downEvent.polygons);
+        std::swap(players, downEvent.players);
+        collision = downEvent.collision;
+        explosion = downEvent.explosion;
+        std::swap(message, downEvent.message);
+    }
+
+    DownEvent(const DownEvent &downEvent) = default;
+
+    DownEvent & operator= (DownEvent &&downEvent)
+    {
+        type = downEvent.type;
+        std::swap(polygons, downEvent.polygons);
+        std::swap(players, downEvent.players);
+        collision = downEvent.collision;
+        explosion = downEvent.explosion;
+        std::swap(message, downEvent.message);
+        return *this;
+    }
+
+    DownEvent(const Type &newType)
         : type(newType), message(L"#") {}
 
     DownEvent()
@@ -65,25 +103,27 @@ public:
 
     Type type;
 
-    class Polygon {
+    class Polygon
+    {
     public:
         sf::VertexArray vertices;
         sf::RenderStates states;
     };
 
-    class Player {
+    class Player
+    {
     public:
         Object::ObjectId id;
-        std::wstring playerId; 
+        std::wstring playerId;
         Vec2f coords;
         float reload;
         std::int16_t hp;
         std::int16_t maxHp;
     };
 
-    const Player* findPlayer(Object::ObjectId id)
+    const Player *findPlayer(Object::ObjectId id)
     {
-        std::vector<Player>::iterator it = std::find_if(players.begin(), players.end(), [&id](const Player& player) {
+        std::vector<Player>::iterator it = std::find_if(players.begin(), players.end(), [&id](const Player &player) {
             return player.id == id;
         });
         if (it == players.end())
@@ -98,11 +138,11 @@ public:
     std::wstring message;
 };
 
-inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
+inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
 {
-    const float* matrix;
+    const float *matrix;
     packet << static_cast<std::uint8_t>(ev.type) << static_cast<std::uint16_t>(ev.polygons.size());
-    for(const DownEvent::Polygon& polygon : ev.polygons)
+    for (const DownEvent::Polygon &polygon : ev.polygons)
     {
         matrix = polygon.states.transform.getMatrix();
         packet << matrix[0] << matrix[4] << matrix[12]
@@ -113,11 +153,11 @@ inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
         {
             packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y;
             //<< polygon.vertices[i].color.r << polygon.vertices[i].color.g
-            //<< polygon.vertices[i].color.b << polygon.vertices[i].color.a; 
+            //<< polygon.vertices[i].color.b << polygon.vertices[i].color.a;
         }
     }
     packet << static_cast<std::uint16_t>(ev.players.size());
-    for(const DownEvent::Player& player : ev.players)
+    for (const DownEvent::Player &player : ev.players)
     {
         packet << player.id << player.playerId << player.coords << player.reload << player.hp << player.maxHp;
     }
@@ -125,7 +165,7 @@ inline sf::Packet& operator <<(sf::Packet& packet, const DownEvent& ev)
     return packet;
 }
 
-inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
+inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
 {
     float a00, a01, a02, a10, a11, a12, a20, a21, a22;
     std::uint8_t type;
@@ -133,7 +173,7 @@ inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
     packet >> type >> size;
     ev.type = static_cast<DownEvent::Type>(type);
     ev.polygons.resize(size);
-    for(DownEvent::Polygon& polygon : ev.polygons)
+    for (DownEvent::Polygon &polygon : ev.polygons)
     {
         packet >> a00 >> a01 >> a02 >> a10 >> a11 >> a12 >> a20 >> a21 >> a22;
         polygon.states.transform = sf::Transform(a00, a01, a02, a10, a11, a12, a20, a21, a22);
@@ -146,18 +186,17 @@ inline sf::Packet& operator >>(sf::Packet& packet, DownEvent& ev)
             packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y;
             polygon.vertices[i].color = sf::Color::White; // There's only one color in this game
             //>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
-            //>> polygon.vertices[i].color.b >> polygon.vertices[i].color.a; 
+            //>> polygon.vertices[i].color.b >> polygon.vertices[i].color.a;
         }
     }
     packet >> size;
     ev.players.resize(size);
-    for(DownEvent::Player& player : ev.players)
+    for (DownEvent::Player &player : ev.players)
     {
         packet >> player.id >> player.playerId >> player.coords >> player.reload >> player.hp >> player.maxHp;
     }
     packet >> ev.collision.x >> ev.collision.y >> ev.explosion >> ev.message;
     return packet;
 }
-
 
 #endif

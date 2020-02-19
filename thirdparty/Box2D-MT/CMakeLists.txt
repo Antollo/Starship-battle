@@ -1,0 +1,5 @@
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Box2D-MT/Box2D/*.cpp)
+#message(${SOURCES})
+add_library(Box2D-MT STATIC ${SOURCES})
+target_include_directories(Box2D-MT PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Box2D-MT)
+target_include_directories(Box2D-MT PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Box2D-MT/Box2D)

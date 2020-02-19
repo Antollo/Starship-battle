@@ -4,7 +4,7 @@
 #include <cmath>
 #include <nlohmann/json.hpp>
 #include <SFML/Network.hpp>
-#include <Box2D/Box2D.h>
+#include <Box2D.h>
 using json = nlohmann::json;
 
 constexpr float pi = 3.14159265358979323846f;

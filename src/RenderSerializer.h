@@ -39,7 +39,7 @@ public:
                 });
             }
         }
-        return downEvent;
+        return std::move(downEvent);
     }
 private:
     DownEvent downEvent;

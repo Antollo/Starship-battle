@@ -6,17 +6,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(Starship_battle)
 
+#/GL /fp:fast -ffast-math
+
 if(MSVC)
-    add_compile_options(/O2 /W3 /MT /fp:fast)
-    #/GL
+    add_compile_options(/O2 /W3 /MT)
 else()
     if(NOT CMAKE_BUILD_TYPE)
-        add_compile_options(-O3 -static-libgcc -static-libstdc++ -ffast-math)
+        add_compile_options(-O3 -static-libgcc)
     endif()
 endif()
 
 add_subdirectory(thirdparty/SFML)
-add_subdirectory(thirdparty/Box2D)
+add_subdirectory(thirdparty/Box2D-MT)
 add_subdirectory(thirdparty/json)
 add_subdirectory(thirdparty/digestpp)
 add_subdirectory(src)
