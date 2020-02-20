@@ -58,6 +58,7 @@ private:
                     spaceship = static_cast<Spaceship *>(bodyUserData);
                     break;
                 case Object::TypeId::Rock:
+                case Object::TypeId::Shield:
                     //resourceManager::playSound("stone.wav");
                 default:
                     break;
@@ -133,7 +134,38 @@ private:
         }
     }
 
-    bool BeginContactImmediate(b2Contact *contact, uint32 threadId) { return true; }
+    bool BeginContactImmediate(b2Contact *contact, uint32 threadId)
+    {
+        void *bodyUserData = contact->GetFixtureA()->GetBody()->GetUserData();
+
+        if (bodyUserData == nullptr)
+            return false;
+
+        switch (static_cast<Object *>(bodyUserData)->getTypeId())
+        {
+        case Object::TypeId::Rock:
+        case Object::TypeId::Shield:
+            return false;
+        default:
+            break;
+        }
+
+        bodyUserData = contact->GetFixtureB()->GetBody()->GetUserData();
+
+        if (bodyUserData == nullptr)
+            return false;
+            
+        switch (static_cast<Object *>(bodyUserData)->getTypeId())
+        {
+        case Object::TypeId::Rock:
+        case Object::TypeId::Shield:
+            return false;
+        default:
+            break;
+        }
+        
+        return true;
+    }
     bool EndContactImmediate(b2Contact *contact, uint32 threadId) { return false; }
     bool PreSolveImmediate(b2Contact *contact, const b2Manifold *oldManifold, uint32 threadId) { return false; }
     bool PostSolveImmediate(b2Contact *contact, const b2ContactImpulse *impulse, uint32 threadId) { return false; }

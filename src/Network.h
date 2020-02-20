@@ -5,6 +5,7 @@
 #include <utility>
 #include <memory>
 #include <iostream>
+#include <atomic>
 #include <SFML/Network.hpp>
 
 class Client
@@ -38,12 +39,12 @@ class Server
 public:
     using iterator = std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>>::iterator;
 
-    Server(sf::TcpListener &newListener) : listener(newListener)
+    Server(sf::TcpListener &newListener) : listener(newListener), activeCounter(0)
     {
         selector.add(listener);
     }
 
-    sf::Socket::Status receive(sf::Packet &packet, iterator& last, sf::Time timeout = sf::microseconds(1))
+    sf::Socket::Status receive(sf::Packet &packet, iterator &last, sf::Time timeout = sf::microseconds(1))
     {
         if (selector.wait(timeout))
         {
@@ -66,11 +67,14 @@ public:
                 if (selector.isReady(*it->first))
                 {
                     last = it;
+                    if (it->second == false)
+                        activeCounter++;
                     it->second = true;
                     sf::Socket::Status status = it->first->receive(packet);
                     if (status == sf::Socket::Disconnected)
                     {
                         std::cout << "Client disconnected.\n";
+                        activeCounter--;
                         selector.remove(*it->first);
                         it->first->disconnect();
                         clients.erase(it);
@@ -82,7 +86,7 @@ public:
         return sf::Socket::Status::Error;
     }
 
-    sf::Socket::Status respond(sf::Packet &packet, iterator& last)
+    sf::Socket::Status respond(sf::Packet &packet, iterator &last)
     {
         return last->first->send(packet);
     }
@@ -94,6 +98,7 @@ public:
             if (pair.second)
             {
                 pair.second = false;
+                activeCounter--;
                 pair.first->send(packet);
             }
         }
@@ -109,7 +114,10 @@ public:
         return sf::Socket::Status::Done;
     }
 
+    int getActiveCounter() const { return activeCounter; }
+
 private:
+    std::atomic<int> activeCounter;
     sf::TcpListener &listener;
     std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>> clients;
     sf::SocketSelector selector;

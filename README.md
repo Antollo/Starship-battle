@@ -84,6 +84,7 @@ TODO
 
 - SFML          - [www.sfml-dev.org](https://www.sfml-dev.org/)
 - Box2D         - [box2d.org](http://box2d.org/)
+- Box2D-MT      - [github.com/jhoffman0x/Box2D-MT](https://github.com/jhoffman0x/Box2D-MT)
 - nlohmann/json - [github.com/nlohmann/json](https://github.com/nlohmann/json)
 - Electron      - [electronjs.org](https://electronjs.org/)
 - Ubuntu Mono   - [fonts.google.com/specimen/Ubuntu+Mono](https://fonts.google.com/specimen/Ubuntu+Mono)

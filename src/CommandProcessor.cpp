@@ -89,6 +89,7 @@ CommandProcessor::CommandProcessor()
         return L"print "
                L"SFML          - www.sfml-dev.org\n"
                L"Box2D         - box2d.org\n"
+               L"Box2D-MT      - github.com/jhoffman0x/Box2D-MT\n"
                L"nlohmann/json - github.com/nlohmann/json\n"
                L"Electron      - electronjs.org\n"
                L"Ubuntu Mono   - fonts.google.com/specimen/Ubuntu+Mono\n"

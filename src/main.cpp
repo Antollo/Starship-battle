@@ -5,6 +5,7 @@
 #include <future>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 #include <SFML/Graphics.hpp>
 #include <SFML/Config.hpp>
 #include "ContactListener.h"
@@ -37,11 +38,12 @@ int main(int argc, const char *argv[])
     int port = std::stoi(args["port"]);
     std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
     float delta = 0.f;
-    sf::Clock clock001, clock1;
+    sf::Clock clock1;
     int velocityIterations = 8, positionIterations = 3, ticks = 0;
     float fps = 100.f;
     sf::Socket::Status socketStatus;
-    std::atomic<bool> running = true;
+    std::atomic<bool> running = true, mainWantsToEnter = false;
+    std::condition_variable cv;
     std::future<void> receivingThread;
     Console console; //This thing displaying text ui
     console
@@ -107,20 +109,23 @@ int main(int argc, const char *argv[])
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
 
-        receivingThread = std::async(std::launch::async, [&client, &running, &clientMutex, &downEventsBuffer, &socketStatus]() {
+        receivingThread = std::async(std::launch::async, [&client, &running, &clientMutex, &downEventsBuffer, &socketStatus, &cv, &mainWantsToEnter]() {
             sf::Packet packet;
             DownEvent downEvent;
             while (running)
             {
                 {
-                    std::lock_guard<std::mutex> lk(clientMutex);
+                    std::unique_lock<std::mutex> lk(clientMutex);
+                    while (mainWantsToEnter)
+                        cv.wait(lk);
                     while ((socketStatus = client.receive(packet)) == sf::Socket::Status::Done)
                     {
                         packet >> downEvent;
                         downEventsBuffer.emplace_back(downEvent);
+                        if (mainWantsToEnter)
+                            break;
                     }
                 }
-                std::this_thread::sleep_for(std::chrono::microseconds(1)); // It's bad but in fact it do what it should
             }
         });
     }
@@ -143,6 +148,7 @@ int main(int argc, const char *argv[])
     b2ThreadPoolTaskExecutor executor;
     sf::Event event;
     sf::Packet packet;
+    int lastActiveCounter; 
     constexpr const auto secret = obfuscate(SECRET);
     commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
         static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
@@ -153,7 +159,6 @@ int main(int argc, const char *argv[])
                 return L"setThisPlayerId "s + std::to_wstring(id) + L" print Spaceship for ranked battle is ready.\n"s;
             return L"print Debugger detected.\n"s;
         });
-
         return L"print Ranked battle mode.\nUse 'create-ranked [spaceship type] [pilot name]' to start ranked battle.\n\n"s;
     });
 
@@ -163,21 +168,24 @@ int main(int argc, const char *argv[])
         while (n--)
             Rock::create();
 
-        receivingThread = std::async(std::launch::async, [&server, &running, &serverMutex, &upEventsRespondableBuffer]() {
+        receivingThread = std::async(std::launch::async, [&server, &running, &serverMutex, &upEventsRespondableBuffer, &cv, &mainWantsToEnter]() {
             sf::Packet packet;
             Server::iterator it;
             UpEvent upEvent;
             while (running)
             {
                 {
-                    std::lock_guard<std::mutex> lk(serverMutex);
+                    std::unique_lock<std::mutex> lk(serverMutex);
+                    while (mainWantsToEnter)
+                        cv.wait(lk);
                     while (server.receive(packet, it) == sf::Socket::Status::Done)
                     {
                         packet >> upEvent;
                         upEventsRespondableBuffer.emplace_back(upEvent, it);
+                        if (mainWantsToEnter)
+                            break;
                     }
                 }
-                std::this_thread::sleep_for(std::chrono::microseconds(1)); // It's bad but in fact it do what it should
             }
         });
     }
@@ -273,6 +281,7 @@ int main(int argc, const char *argv[])
                 upEvents.emplace_back();
 
             {
+                mainWantsToEnter = true;
                 std::lock_guard<std::mutex> lk(clientMutex);
                 for (const auto &upEvent : upEvents)
                 {
@@ -280,11 +289,6 @@ int main(int argc, const char *argv[])
                     packet << upEvent;
                     client.send(packet);
                 }
-            }
-            upEvents.clear();
-
-            {
-                std::lock_guard<std::mutex> lk(clientMutex);
                 std::swap(downEvents, downEventsBuffer);
                 if (socketStatus == sf::Socket::Status::Disconnected)
                 {
@@ -295,7 +299,11 @@ int main(int argc, const char *argv[])
                         break;
                     }
                 }
+                mainWantsToEnter = false;
             }
+            cv.notify_one();
+            upEvents.clear();
+
             for (auto &el : downEvents)
             {
                 DownEvent &downEvent = el;
@@ -389,9 +397,13 @@ int main(int argc, const char *argv[])
         if (serverSide)
         {
             {
+                mainWantsToEnter = true;
                 std::lock_guard<std::mutex> lk(serverMutex);
                 std::swap(upEventsRespondable, upEventsRespondableBuffer);
+                mainWantsToEnter = false;
             }
+            cv.notify_one();
+
             for (auto &el : upEventsRespondable)
             {
                 UpEvent &upEvent = el.first;
@@ -425,9 +437,12 @@ int main(int argc, const char *argv[])
                     packet.clear();
                     packet << response;
                     {
+                        mainWantsToEnter = true;
                         std::lock_guard<std::mutex> lk(serverMutex);
                         server.respond(packet, el.second);
+                        mainWantsToEnter = false;
                     }
+                    cv.notify_one();
                     break;
                 }
             }
@@ -437,32 +452,30 @@ int main(int argc, const char *argv[])
             Object::processAll();
             Object::world.Step(delta, velocityIterations, positionIterations, executor);
 
-            renderSerializer.clear();
-            for (const auto &object : Object::objects)
-                renderSerializer.draw(*(object.second));
-            packet.clear();
-            packet << renderSerializer.getDownEvent();
+            lastActiveCounter = server.getActiveCounter(); 
+            if (lastActiveCounter > 0)
+            {
+                renderSerializer.clear();
+                for (const auto &object : Object::objects)
+                    renderSerializer.draw(*(object.second));
+                packet.clear();
+                packet << renderSerializer.getDownEvent();
+            }
 
             {
+                mainWantsToEnter = true;
                 std::lock_guard<std::mutex> lk(serverMutex);
-                if (performanceLevelId == PerformanceLevels::Id::High)
-                {
-                    if (clock001.getElapsedTime().asSeconds() >= 0.01f)
-                    {
-                        server.send(packet);
-                        clock001.restart();
-                    }
-                }
-                else
+                if (lastActiveCounter > 0)
                     server.sendToActive(packet);
-
                 for (const auto &downEvent : downEvents)
                 {
                     packet.clear();
                     packet << downEvent;
                     server.send(packet);
                 }
+                mainWantsToEnter = false;
             }
+            cv.notify_one();
             downEvents.clear();
         }
         //...
@@ -475,7 +488,7 @@ int main(int argc, const char *argv[])
                 std::cout << upEventCounter << " events received.\n";
                 std::cout << int(std::roundf(fps)) << " server frames per second.\n";
                 upEventCounter = 0;
-                if (fps >= 70.f)
+                if (fps >= 100.f)
                 {
                     if (performanceLevelId != PerformanceLevels::Id::High)
                     {
@@ -483,7 +496,7 @@ int main(int argc, const char *argv[])
                         PerformanceLevels::set<PerformanceLevels::High>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
                     }
                 }
-                else if (fps >= 40.f)
+                else if (fps >= 50.f)
                 {
                     if (performanceLevelId != PerformanceLevels::Id::Normal)
                     {
@@ -519,7 +532,9 @@ int main(int argc, const char *argv[])
             std::cerr << std::flush;
         }
     }
+    mainWantsToEnter = false;
     running = false;
+    cv.notify_one();
     if (receivingThread.valid())
         receivingThread.get();
     Object::objects.clear();
