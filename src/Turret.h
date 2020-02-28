@@ -36,9 +36,10 @@ public:
 
         rng.param(std::uniform_real_distribution<float>::param_type(-accuracy, accuracy));
     }
-    void setRotation(const float& angle)
+    bool setRotation(const float& angle)
     {
         sf::Transformable::setRotation(std::min(std::max(angle, - maxAngle), maxAngle));
+        return angle > - maxAngle && angle < maxAngle;
     }
     void shoot(const sf::Transform& transform, const float& angle, const Vec2f& velocity, const int& index)
     {
@@ -51,10 +52,10 @@ private:
         states.transform *= getTransform();
         target.draw(polygon, states);
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
+    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
-        target.draw(polygon, states);
+        target.draw(polygon, states, position, linearVelocity, angularVelocity);
     }
     sf::VertexArray polygon;
     std::vector<Vec2f> bulletShape;

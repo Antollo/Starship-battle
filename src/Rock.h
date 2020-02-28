@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include "Object.h"
 
-class Rock : public Object, public sf::Transformable
+class Rock : public Object
 {
 public:
     static Rock* create()
@@ -28,6 +28,14 @@ public:
     {
         body->GetMassData(const_cast<b2MassData*>(&massData));
         return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+    }
+    Vec2f getLinearVelocity() const override
+    {
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+    }
+    float getAngularVelocity() const override
+    {
+        return body->GetAngularVelocity() * 180.f / pi;
     }
     ~Rock() override
     {
@@ -120,21 +128,11 @@ private:
         polygon[points.size()] = polygon[0];
     }
     Rock(const sf::VertexArray& newPolygon, b2Body* newBody)
-        : polygon(newPolygon), body(newBody)
+        : body(newBody)
     {
+        polygon = newPolygon;
         body->SetUserData(this);
     }
-    void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
-    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
-    sf::VertexArray polygon;
     b2Body* body;
     b2MassData massData;
     static constexpr std::size_t n = 7;

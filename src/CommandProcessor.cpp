@@ -143,6 +143,7 @@ CommandProcessor::CommandProcessor()
                L"    create-team [team name]              (aliased as 'ct')\n"
                L"    join-team [team name]                (aliased as 'jt')\n"
                L"    team-stats                           (aliased as 's')\n"
+               L"    message [body]                       \n"
                L"    delete                               \n"
                L"    credits                              \n"
                L"    beep                                 \n"s;

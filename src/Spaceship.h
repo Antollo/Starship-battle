@@ -8,7 +8,7 @@
 #include "Rock.h"
 #include "Shield.h"
 
-class Spaceship : public Object, public sf::Transformable
+class Spaceship : public Object
 {
 public:
     static Spaceship* create(const std::string& type, const std::wstring& playerId)
@@ -28,9 +28,21 @@ public:
         body->GetMassData(const_cast<b2MassData*>(&massData));
         return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
     }
+    Vec2f getLinearVelocity() const override
+    {
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+    }
+    float getAngularVelocity() const override
+    {
+        return body->GetAngularVelocity() * 180.f / pi;
+    }
     float getReloadState()
     {
         return clock.getElapsedTime().asSeconds() / reload;
+    }
+    bool getAimState()
+    {
+        return aimState;
     }
     const float& getMaxHp()
     {
@@ -170,12 +182,17 @@ private:
         for (const Turret& turret : turrets)
             target.draw(turret, states);
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
+    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
-        target.draw(polygon, states);
+        Vec2f myLinearVelocity = getLinearVelocity();
+        Vec2f myPosition = getCenterPosition();
+        float myAngularVelocity = getAngularVelocity();
+        target.draw(polygon, states, myPosition, myLinearVelocity, myAngularVelocity);
         for (const Turret& turret : turrets)
-            target.draw(turret, states);
+            target.draw(turret, states, myPosition, myLinearVelocity, myAngularVelocity);
+        for (const ObjectId & objectId : shields)
+            dynamic_cast<const Shield*>(objects[objectId].get())->drawS(target, sf::RenderStates::Default, myPosition, myLinearVelocity, myAngularVelocity);
     }
     void onForward() noexcept
     {
@@ -195,7 +212,7 @@ private:
         for (Turret& turret : turrets)
         {
             targetRelativeToTurret = getInverseTransform().transformPoint(aimCoords) - turret.getPosition();
-            turret.setRotation(std::atan2(targetRelativeToTurret.y,  targetRelativeToTurret.x) * 180.f / pi);
+            aimState = turret.setRotation(std::atan2(targetRelativeToTurret.y,  targetRelativeToTurret.x) * 180.f / pi);
         }
     }
     void onShoot() noexcept
@@ -208,10 +225,10 @@ private:
         }
     }
     std::wstring playerId;
-    sf::VertexArray polygon;
     b2Body* body;
     b2MassData massData;
     float force, torque, reload, maxHp, hp, armor;
+    bool aimState;
     std::vector<Turret> turrets;
     std::vector<Object::ObjectId> shields;
     sf::Clock clock;

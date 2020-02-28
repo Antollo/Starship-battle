@@ -3,7 +3,7 @@
 
 #include "Object.h"
 
-class Bullet : public Object, public sf::Transformable
+class Bullet : public Object
 {
 public:
     static Bullet* create(const std::vector<Vec2f>& points, Vec2f position, const float& angle, const float& newPenetration, const float& newDamage, const Vec2f& velocity, const int& index)
@@ -20,6 +20,14 @@ public:
     {
         body->GetMassData(const_cast<b2MassData*>(&massData));
         return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+    }
+    Vec2f getLinearVelocity() const override
+    {
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+    }
+    float getAngularVelocity() const override
+    {
+        return body->GetAngularVelocity() * 180.f / pi;
     }
     ~Bullet() override
     {
@@ -72,18 +80,7 @@ private:
         body->SetLinearVelocity(velocity);
         process();
     }
-    void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
-    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
     ObjectId getId() override { return -body->GetFixtureList()[0].GetFilterData().groupIndex; }
-    sf::VertexArray polygon;
     b2Body* body;
     b2MassData massData;
     float penetration, damage;

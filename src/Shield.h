@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include "Object.h"
 
-class Shield : public Object, public sf::Transformable
+class Shield : public Object
 {
 public:
     static Shield* create(std::vector<Vec2f> points, const int& index)
@@ -20,6 +20,14 @@ public:
     {
         body->GetMassData(const_cast<b2MassData*>(&massData));
         return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+    }
+    Vec2f getLinearVelocity() const override
+    {
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+    }
+    float getAngularVelocity() const override
+    {
+        return body->GetAngularVelocity() * 180.f / pi;
     }
     ~Shield() override
     {
@@ -81,17 +89,13 @@ private:
         }
         polygon[points.size()] = polygon[0];
     }
-    void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
+    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override {}
+    void drawS(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept
     {
         states.transform *= getTransform();
-        target.draw(polygon, states);
+        target.draw(polygon, states, position, linearVelocity, angularVelocity);
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
-    sf::VertexArray polygon;
+    friend class Spaceship;
     b2Body* body;
     b2WeldJoint* joint;
     b2MassData massData;

@@ -84,7 +84,7 @@ public:
 
     DownEvent(const DownEvent &downEvent) = default;
 
-    DownEvent & operator= (DownEvent &&downEvent)
+    DownEvent &operator=(DownEvent &&downEvent)
     {
         type = downEvent.type;
         std::swap(polygons, downEvent.polygons);
@@ -108,6 +108,9 @@ public:
     public:
         sf::VertexArray vertices;
         sf::RenderStates states;
+        Vec2f position;
+        Vec2f linearVelocity;
+        float angularVelocity;
     };
 
     class Player
@@ -115,8 +118,10 @@ public:
     public:
         Object::ObjectId id;
         std::wstring playerId;
-        Vec2f coords;
+        Vec2f position;
+        Vec2f linearVelocity;
         float reload;
+        bool aimState;
         std::int16_t hp;
         std::int16_t maxHp;
     };
@@ -140,26 +145,30 @@ public:
 
 inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
 {
-    const float *matrix;
+    //const float *matrix;
+    sf::Vector2f position;
     packet << static_cast<std::uint8_t>(ev.type) << static_cast<std::uint16_t>(ev.polygons.size());
     for (const DownEvent::Polygon &polygon : ev.polygons)
     {
-        matrix = polygon.states.transform.getMatrix();
+        /*matrix = polygon.states.transform.getMatrix();
         packet << matrix[0] << matrix[4] << matrix[12]
                << matrix[1] << matrix[5] << matrix[13]
-               << matrix[3] << matrix[7] << matrix[15];
+               << matrix[3] << matrix[7] << matrix[15];*/
         packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount());
+        packet << polygon.position << polygon.linearVelocity << polygon.angularVelocity;
         for (size_t i = 0; i < polygon.vertices.getVertexCount(); i++)
         {
-            packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y;
-            //<< polygon.vertices[i].color.r << polygon.vertices[i].color.g
-            //<< polygon.vertices[i].color.b << polygon.vertices[i].color.a;
+            position = polygon.states.transform.transformPoint(polygon.vertices[i].position);
+            packet << position.x << position.y;
+            /*packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y;
+            << polygon.vertices[i].color.r << polygon.vertices[i].color.g
+            << polygon.vertices[i].color.b << polygon.vertices[i].color.a;*/
         }
     }
     packet << static_cast<std::uint16_t>(ev.players.size());
     for (const DownEvent::Player &player : ev.players)
     {
-        packet << player.id << player.playerId << player.coords << player.reload << player.hp << player.maxHp;
+        packet << player.id << player.playerId << player.position << player.linearVelocity << player.reload << player.aimState << player.hp << player.maxHp;
     }
     packet << ev.collision.x << ev.collision.y << ev.explosion << ev.message;
     return packet;
@@ -167,7 +176,7 @@ inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
 
 inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
 {
-    float a00, a01, a02, a10, a11, a12, a20, a21, a22;
+    //float a00, a01, a02, a10, a11, a12, a20, a21, a22;
     std::uint8_t type;
     std::uint16_t size;
     packet >> type >> size;
@@ -175,25 +184,27 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
     ev.polygons.resize(size);
     for (DownEvent::Polygon &polygon : ev.polygons)
     {
-        packet >> a00 >> a01 >> a02 >> a10 >> a11 >> a12 >> a20 >> a21 >> a22;
-        polygon.states.transform = sf::Transform(a00, a01, a02, a10, a11, a12, a20, a21, a22);
+        /*packet >> a00 >> a01 >> a02 >> a10 >> a11 >> a12 >> a20 >> a21 >> a22;
+        polygon.states.transform = sf::Transform(a00, a01, a02, a10, a11, a12, a20, a21, a22);*/
+        polygon.states = sf::RenderStates::Default;
         packet >> type;
         polygon.vertices.setPrimitiveType(static_cast<sf::PrimitiveType>(type));
         packet >> type; // Actually size, but uint8_t
+        packet >> polygon.position >> polygon.linearVelocity >> polygon.angularVelocity;
         polygon.vertices.resize(type);
         for (std::uint16_t i = 0; i < type; i++)
         {
             packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y;
             polygon.vertices[i].color = sf::Color::White; // There's only one color in this game
-            //>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
-            //>> polygon.vertices[i].color.b >> polygon.vertices[i].color.a;
+            /*>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
+            >> polygon.vertices[i].color.b >> polygon.vertices[i].color.a;*/
         }
     }
     packet >> size;
     ev.players.resize(size);
     for (DownEvent::Player &player : ev.players)
     {
-        packet >> player.id >> player.playerId >> player.coords >> player.reload >> player.hp >> player.maxHp;
+        packet >> player.id >> player.playerId >> player.position >> player.linearVelocity >> player.reload >> player.aimState >> player.hp >> player.maxHp;
     }
     packet >> ev.collision.x >> ev.collision.y >> ev.explosion >> ev.message;
     return packet;

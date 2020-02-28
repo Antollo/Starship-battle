@@ -20,8 +20,10 @@ class RenderSerializable;
 class RenderSerializerBase
 {
 public:
-    virtual void draw(const RenderSerializable &drawable, const sf::RenderStates &states = sf::RenderStates::Default) noexcept = 0;
-    virtual void draw(const sf::VertexArray &vertexArray, const sf::RenderStates &states = sf::RenderStates::Default) noexcept = 0;
+    //virtual void draw(const RenderSerializable &drawable, const sf::RenderStates &states = sf::RenderStates::Default) noexcept = 0;
+    virtual void draw(const RenderSerializable &drawable, const sf::RenderStates &states = sf::RenderStates::Default, const Vec2f &position = {0.f, 0.f}, const Vec2f &linearVelocity = {0.f, 0.f}, float angularVelocity = 0.f) noexcept = 0;
+    //virtual void draw(const sf::VertexArray &vertexArray, const sf::RenderStates &states = sf::RenderStates::Default) noexcept = 0;
+    virtual void draw(const sf::VertexArray &vertexArray, const sf::RenderStates &states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) noexcept = 0;
 };
 
 class RenderSerializable
@@ -29,10 +31,10 @@ class RenderSerializable
 private:
     friend class RenderSerializerBase;
     friend class RenderSerializer;
-    virtual void draw(RenderSerializerBase &, sf::RenderStates states) const noexcept = 0;
+    virtual void draw(RenderSerializerBase &renderSerializer, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept = 0;
 };
 
-class Object : public sf::Drawable, public RenderSerializable
+class Object : public sf::Drawable,  public sf::Transformable, public RenderSerializable
 {
 public:
     using ObjectId = std::int32_t;
@@ -49,9 +51,12 @@ public:
     };
     virtual const TypeId getTypeId() const { return TypeId::Invalid; };
     virtual Vec2f getCenterPosition() const = 0;
-    Object() : destroy(false), id(++counter){ 
-        if(counter == std::numeric_limits<Object::ObjectId>::max())
-        counter = 1;
+    virtual Vec2f getLinearVelocity() const = 0;
+    virtual float getAngularVelocity() const = 0;
+    Object() : destroy(false), id(++counter)
+    {
+        if (counter == std::numeric_limits<Object::ObjectId>::max())
+            counter = 1;
     };
     virtual ObjectId getId() { return id; }
     virtual void process() = 0;
@@ -76,7 +81,7 @@ public:
         for (const auto &object : Object::objects)
             object.second->process();
 
-        ObjectsContainer:: iterator i, j;
+        ObjectsContainer::iterator i, j;
         for (auto i = Object::objects.begin(); i != Object::objects.end();)
         {
             j = i++;
@@ -88,13 +93,23 @@ public:
         for (auto &object : Object::objects)
             object.second->destroy = true;
         processAll();
-        if (firstPhase) 
+        if (firstPhase)
             destroyAll(false);
     }
-
-private:
+protected:
     ObjectId id;
-    virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept = 0;
+    sf::VertexArray polygon;
+private:
+    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
+    {
+        states.transform *= getTransform();
+        target.draw(polygon, states);
+    }
+    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
+    {
+        states.transform *= getTransform();
+        target.draw(polygon, states, getCenterPosition(), getLinearVelocity(), getAngularVelocity());
+    }
 
     void onDestroy()
     {

@@ -10,13 +10,13 @@ class RenderSerializer : public RenderSerializerBase
 {
 public:
     RenderSerializer() : downEvent(DownEvent::Type::DirectDraw) {}
-    void draw(const RenderSerializable& drawable, const sf::RenderStates& states = sf::RenderStates::Default) noexcept override
+    void draw(const RenderSerializable& drawable, const sf::RenderStates& states = sf::RenderStates::Default, const Vec2f &position = {0.f, 0.f}, const Vec2f &linearVelocity = {0.f, 0.f}, float angularVelocity = 0.f) noexcept override
     {
-        drawable.draw(*this, states);        
+        drawable.draw(*this, states, position, linearVelocity, angularVelocity);
     }
-    void draw(const sf::VertexArray& vertexArray, const sf::RenderStates& states = sf::RenderStates::Default) noexcept override
+    void draw(const sf::VertexArray &vertexArray, const sf::RenderStates &states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) noexcept override
     {
-        downEvent.polygons.push_back({vertexArray, states});
+        downEvent.polygons.push_back({vertexArray, states, position, linearVelocity, angularVelocity});
     }
     void clear()
     {
@@ -33,7 +33,9 @@ public:
                     it.first,
                     dynamic_cast<Spaceship&>(*it.second).playerId,
                     it.second->getCenterPosition(),
+                    it.second->getLinearVelocity(),
                     dynamic_cast<Spaceship&>(*it.second).getReloadState(),
+                    dynamic_cast<Spaceship&>(*it.second).getAimState(),
                     static_cast<std::int16_t>(dynamic_cast<Spaceship&>(*it.second).hp),
                     static_cast<std::int16_t>(dynamic_cast<Spaceship&>(*it.second).maxHp)
                 });

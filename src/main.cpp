@@ -38,7 +38,7 @@ int main(int argc, const char *argv[])
     int port = std::stoi(args["port"]);
     std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
     float delta = 0.f;
-    sf::Clock clock1;
+    sf::Clock clock1, clock033;
     int velocityIterations = 8, positionIterations = 3, ticks = 0;
     float fps = 100.f;
     sf::Socket::Status socketStatus;
@@ -59,7 +59,7 @@ int main(int argc, const char *argv[])
     sf::TcpSocket socket;
     sf::Text text;
     DownEvent downEvent, downEventDirectDraw;
-    bool rightMouseButtonDown = false;
+    bool rightMouseButtonDown = false, downEventDirectDrawReceived = false;
     int alive = 0;
     decltype(Object::objects)::iterator i, j;
     float mouseScrollMultiplier = 1.f;
@@ -100,7 +100,7 @@ int main(int argc, const char *argv[])
 
         icon.loadFromFile("icon.png");
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
-        window.setFramerateLimit(60);
+        window.setVerticalSyncEnabled(true);
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
@@ -148,7 +148,7 @@ int main(int argc, const char *argv[])
     b2ThreadPoolTaskExecutor executor;
     sf::Event event;
     sf::Packet packet;
-    int lastActiveCounter; 
+    int lastActiveCounter;
     constexpr const auto secret = obfuscate(SECRET);
     commandProcessor.bind(L"ranked", [&commandProcessor, &downEvents, &secret]() {
         static RankedBattle<decltype(obfuscate(SECRET))> rankedBattle(commandProcessor, downEvents, secret);
@@ -272,7 +272,13 @@ int main(int argc, const char *argv[])
         if (!serverSide)
         {
             if (console.isTextEntered())
-                upEvents.emplace_back(UpEvent::Type::Command, console.get() + L" " + std::to_wstring(Object::thisPlayerId));
+            {
+                std::wstring command = console.get();
+                if (command.find(L"join-team") == 0 || command.find(L"team-stats") == 0)
+                    upEvents.emplace_back(UpEvent::Type::Command, command + L" " + std::to_wstring(Object::thisPlayerId));
+                else
+                    upEvents.emplace_back(UpEvent::Type::Command, command);
+            }
 
             if (rightMouseButtonDown)
                 upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
@@ -310,6 +316,7 @@ int main(int argc, const char *argv[])
                 switch (downEvent.type)
                 {
                 case DownEvent::Type::DirectDraw:
+                    downEventDirectDrawReceived = true;
                     downEventDirectDraw = std::move(downEvent);
                     break;
                 case DownEvent::Type::Collision:
@@ -349,19 +356,30 @@ int main(int argc, const char *argv[])
             }
             downEvents.clear();
 
+            if (!downEventDirectDrawReceived)
+            {
+                for (auto &polygon : downEventDirectDraw.polygons)
+                    polygon.states.transform.translate(polygon.linearVelocity * delta).rotate(polygon.angularVelocity * delta, polygon.position);
+
+                for (auto &player : downEventDirectDraw.players)
+                    player.position += player.linearVelocity * delta;
+            }
+            else
+                downEventDirectDrawReceived = false;
+
             window.clear(sf::Color::Black);
 
             for (const auto &player : downEventDirectDraw.players)
             {
                 if (player.id == Object::thisPlayerId)
                 {
-                    window.setView({player.coords, window.getView().getSize()});
-                    cursor.setState(player.reload, player.hp, player.maxHp);
+                    window.setView({player.position, window.getView().getSize()});
+                    cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
                     scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
                     alive = 100;
                 }
                 text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
-                text.setPosition(player.coords.x, player.coords.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
+                text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
                 text.setScale(scale);
                 window.draw(text);
             }
@@ -432,6 +450,13 @@ int main(int argc, const char *argv[])
                     dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aimCoords = upEvent.coords;
                     break;
                 case UpEvent::Type::Command:
+                    if (upEvent.command.find(L"message ") == 0)
+                    {
+                        DownEvent message(DownEvent::Type::Message);
+                        message.message = upEvent.command.erase(0, 8) + L"\n";
+                        downEvents.push_back(message);
+                        break;
+                    }
                     DownEvent response(DownEvent::Type::Response);
                     response.message = commandProcessor.call(upEvent.command);
                     packet.clear();
@@ -452,7 +477,9 @@ int main(int argc, const char *argv[])
             Object::processAll();
             Object::world.Step(delta, velocityIterations, positionIterations, executor);
 
-            lastActiveCounter = server.getActiveCounter(); 
+            lastActiveCounter = 0;
+            if (clock033.getElapsedTime().asSeconds() >= 0.033f)
+                clock033.restart(), lastActiveCounter = server.getActiveCounter();
             if (lastActiveCounter > 0)
             {
                 renderSerializer.clear();
@@ -511,19 +538,6 @@ int main(int argc, const char *argv[])
                         std::cout << "Low perforance level.\n";
                         PerformanceLevels::set<PerformanceLevels::Low>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
                     }
-                }
-            }
-            else
-            {
-                if (fps < 40.f && antialiasingLevel != 0)
-                {
-                    antialiasingLevel /= 2;
-                    window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
-                    window.setFramerateLimit(60);
-                    window.setMouseCursorVisible(false);
-                    window.requestFocus();
-                    window.setView({{0.f, 0.f}, window.getView().getSize()});
-                    window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
                 }
             }
             clock1.restart();
