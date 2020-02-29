@@ -38,7 +38,7 @@ public:
     }
     float getReloadState()
     {
-        return clock.getElapsedTime().asSeconds() / reload;
+        return clock.getElapsedTime().asSeconds() / *reloadIt;
     }
     bool getAimState()
     {
@@ -147,7 +147,8 @@ private:
 
         force = jsonObject["force"].get<float>();
         torque = jsonObject["torque"].get<float>();
-        reload = jsonObject["reload"].get<float>();
+        reload = jsonObject["reload"].get<std::vector<float>>();
+        reloadIt = reload.begin();
         maxHp = hp = jsonObject["hp"].get<float>();
         armor = jsonObject["armor"].get<float>();
         /*std::string str;
@@ -215,19 +216,23 @@ private:
             aimState = turret.setRotation(std::atan2(targetRelativeToTurret.y,  targetRelativeToTurret.x) * 180.f / pi);
         }
     }
-    void onShoot() noexcept
+    virtual void onShoot() noexcept
     {
-        if (clock.getElapsedTime().asSeconds() >= reload)
+        if (clock.getElapsedTime().asSeconds() > *reloadIt)
         {
             for (Turret& turret : turrets)
                 turret.shoot(getTransform(), getRotation() / 180.f * pi, Vec2f::asVec2f(body->GetLinearVelocity()), -getId());
             clock.restart();
+            reloadIt++;
+            if(reloadIt == reload.end()) reloadIt = reload.begin();
         }
     }
     std::wstring playerId;
     b2Body* body;
     b2MassData massData;
-    float force, torque, reload, maxHp, hp, armor;
+    float force, torque, maxHp, hp, armor;
+    std::vector<float> reload;
+    std::vector<float>::iterator reloadIt;
     bool aimState;
     std::vector<Turret> turrets;
     std::vector<Object::ObjectId> shields;

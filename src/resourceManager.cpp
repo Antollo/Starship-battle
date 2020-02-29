@@ -1,4 +1,6 @@
 #include "resourceManager.h"
+#include <filesystem>
+#include <iostream>
 
 sf::SoundBuffer &getSoundBuffer(const std::string &name)
 {
@@ -11,17 +13,25 @@ sf::SoundBuffer &getSoundBuffer(const std::string &name)
     return soundBufferMap[name];
 }
 
-json resourceManager::getJSON(const std::string &name)
+const json &resourceManager::getJSON(const std::string &name)
 {
     static std::map<std::string, json> jsonMap;
     if (name == "hash")
     {
-        std::string ret;
+        for (auto &p : std::filesystem::directory_iterator("."))
+            if (p.path().extension() == ".json")
+            {
+                std::cout<<p.path()<<std::endl;
+                getJSON(p.path().stem().string());
+            }
+
+        std::string str;
         for (const auto &el : jsonMap)
         {
-            ret += el.second.dump();
+            str += el.second.dump();
         }
-        return {{ "sha256", digestpp::sha256().absorb(ret).hexdigest() }};
+        static json ret = {{"sha256", digestpp::sha256().absorb(str).hexdigest()}};
+        return ret;
     }
     if (!jsonMap.count(name))
     {

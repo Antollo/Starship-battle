@@ -8,9 +8,10 @@
 class Bot : public Spaceship
 {
 public:
-    static Bot* create(const std::string& type)
+    static Bot *create(const std::string &type)
     {
-        if (type.empty()) throw std::runtime_error("Type of spaceship was empty.");
+        if (type.empty())
+            throw std::runtime_error("Type of spaceship was empty.");
         auto bot = new Bot(type);
         objects.emplace(bot->getId(), bot);
         return bot;
@@ -22,12 +23,12 @@ public:
     void process() override
     {
         Vec2f newAimCoords{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-        for (const auto& targetId : targets)
+        for (const auto &targetId : targets)
         {
-            if (objects.count(targetId) == 0) continue;
+            if (objects.count(targetId) == 0)
+                continue;
             //if (object.getTypeId() == Object::TypeId::Spaceship)
-            if (getCenterPosition().getSquaredDistance(objects[targetId]->getCenterPosition())
-            < getCenterPosition().getSquaredDistance(newAimCoords))
+            if (getCenterPosition().getSquaredDistance(objects[targetId]->getCenterPosition()) < getCenterPosition().getSquaredDistance(newAimCoords))
                 newAimCoords = objects[targetId]->getCenterPosition();
         }
 
@@ -42,8 +43,10 @@ public:
             aim = true;
             aimCoords = newAimCoords; //+ Vec2f{worldScale * (rng01(mt) - 0.5f), worldScale * (rng01(mt) - 0.5f)};
             float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
-            while (aimAngle > pi) aimAngle -= 2.f * pi;
-            while (aimAngle < -pi) aimAngle += 2.f * pi;
+            while (aimAngle > pi)
+                aimAngle -= 2.f * pi;
+            while (aimAngle < -pi)
+                aimAngle += 2.f * pi;
 
             if (getCenterPosition().getSquaredDistance(newAimCoords) < 80000.f * 80000.f && aimAngle > -0.6f && aimAngle < 0.6f)
                 shoot = true;
@@ -66,7 +69,8 @@ public:
             {
                 right = false;
                 left = false;
-                if (aimAngle > -0.5f && aimAngle < 0.5f) forward = true;
+                if (aimAngle > -0.5f && aimAngle < 0.5f)
+                    forward = true;
             }
         }
         else
@@ -79,24 +83,34 @@ public:
         }
         Spaceship::process();
     }
-    void target(const Object::ObjectId& id)
+    void target(const Object::ObjectId &id)
     {
         targets.insert(id);
     }
-    static void allTarget(const Object::ObjectId& id)
+    static void allTarget(const Object::ObjectId &id)
     {
-        for (auto& obj : objects)
+        for (auto &obj : objects)
             if (obj.second->getTypeId() == Object::TypeId::Bot && obj.second->getId() != id)
-                    dynamic_cast<Bot&>(*obj.second).target(id);
+                dynamic_cast<Bot &>(*obj.second).target(id);
     }
     ~Bot() override
     {
         //create(t, pID);
     }
+
 private:
     std::set<Object::ObjectId> targets;
-    Bot(const std::string& type) : Spaceship(type)
-    { }
+    Bot(const std::string &type) : Spaceship(type)
+    {
+    }
+    void onShoot() noexcept override
+    {
+        if (clock.getElapsedTime().asSeconds() > *reloadIt)
+            if (Object::rng01(Object::mt) < 0.3f)
+                clock.restart();
+            else
+                Spaceship::onShoot();
+    }
 };
 
 #endif /* !BOT_H_ */

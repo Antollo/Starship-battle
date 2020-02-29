@@ -1,5 +1,5 @@
 {
-    "maxAngle": 180,
+    "maxAngle": 160,
     "bulletVelocity": 50,
     "accuracy": 0.1,
     "damage": 130,

@@ -110,12 +110,12 @@ private:
                 {
                     downEvents.emplace_back(DownEvent::Type::Message);
                     downEvents.back().message = spaceship->playerId + L" was warped to HQ\n";
+                    Spaceship& player = dynamic_cast<Spaceship &>(*Object::objects[bullet->getId()]);
+                    player.hp = player.maxHp;
                 }
 
                 if (spaceship->getTypeId() == Object::TypeId::Bot)
-                {
                     dynamic_cast<Bot *>(spaceship)->target(bullet->getId());
-                }
             }
             else
             {

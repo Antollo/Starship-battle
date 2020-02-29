@@ -64,7 +64,7 @@ public:
             if (Object::objects.count(id) == 1)
             {
                 now = std::chrono::steady_clock::now();
-                if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= 15.f)
+                if (std::chrono::duration_cast<std::chrono::duration<float>>(now - helper).count() >= spawnInterval)
                 {
                     helper = std::chrono::steady_clock::now();
                     downEvents.emplace_back(DownEvent::Type::Response);
@@ -127,6 +127,7 @@ private:
     CommandProcessor &commandProcessor;
     std::vector<DownEvent> &downEvents;
     const S &secret;
+    static constexpr float spawnInterval = 30.f;
     std::chrono::steady_clock::time_point begin;
     std::chrono::steady_clock::time_point helper;
     std::chrono::steady_clock::time_point now;

@@ -306,7 +306,8 @@
         "shared_mutex": "cpp",
         "typeindex": "cpp",
         "*.rh": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "filesystem": "cpp"
     },
     "cSpell.words": [
         "beforeend",

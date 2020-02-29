@@ -46,7 +46,7 @@ public:
         circle.setRadius(56.f);
         circle.setOrigin(56.f, 56.f);
         circle.setOutlineColor(sf::Color::White);
-        circle.setOutlineThickness(1.f);
+        circle.setOutlineThickness(resourceManager::getJSON("config")["lineWidth"].get<float>());
         circle.setFillColor(sf::Color::Transparent);
     }
     void setState(const float &newReloadState = 0.f, bool newAimState = true, const int &hp = 0, const int &maxHp = 0)

@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <SFML/Graphics.hpp>
 #include <SFML/Config.hpp>
+#include <SFML/OpenGL.hpp>
 #include "ContactListener.h"
 #include "Console.h"
 #include "Spaceship.h"
@@ -105,6 +106,9 @@ int main(int argc, const char *argv[])
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+
+        glLineWidth(resourceManager::getJSON("config")["lineWidth"].get<float>());
+        glPointSize(resourceManager::getJSON("config")["lineWidth"].get<float>());
 
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
