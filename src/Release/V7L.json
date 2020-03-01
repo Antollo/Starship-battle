@@ -1,5 +1,5 @@
 {
-    "linearDamping": 0.5,
+    "linearDamping": 0.6,
     "angularDamping": 1.1,
     "force": 900,
     "torque": 900,

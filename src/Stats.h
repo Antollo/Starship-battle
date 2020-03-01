@@ -11,6 +11,17 @@ public:
     {
         nameToStats.try_emplace(name);
     }
+    static void removeTeam(const std::wstring &name)
+    {
+        if (nameToStats.count(name))
+            nameToStats.erase(nameToStats.find(name));
+    }
+    static float getDamageDealt(const std::wstring &name)
+    {
+        if (nameToStats.count(name))
+            return nameToStats[name].damage;
+        return 0.f;
+    }
     static bool joinTeam(const std::wstring &name, const Object::ObjectId &id)
     {
         if (id == 0)
@@ -22,7 +33,7 @@ public:
         auto object = Object::objects.find(id);
         if (object == Object::objects.end())
             return false;
-        auto spaceship = dynamic_cast<Spaceship*>(object->second.get());
+        auto spaceship = dynamic_cast<Spaceship *>(object->second.get());
         if (spaceship == nullptr)
             return false;
         stats->second.pilots.push_back(spaceship->getPlayerId());

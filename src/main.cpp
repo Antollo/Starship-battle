@@ -63,7 +63,7 @@ int main(int argc, const char *argv[])
     bool rightMouseButtonDown = false, downEventDirectDrawReceived = false;
     int alive = 0;
     decltype(Object::objects)::iterator i, j;
-    float mouseScrollMultiplier = 1.f;
+    float mouseScrollMultiplier = 1.f, ping = 0.f;
     int antialiasingLevel = 16;
     Vec2f scale;
     std::vector<UpEvent> upEvents;
@@ -71,6 +71,7 @@ int main(int argc, const char *argv[])
     std::vector<DownEvent> downEventsBuffer;
     sf::RenderWindow window; //Graphic window
     sf::Image icon;
+    sf::Clock pingClock;
 
     if (!serverSide)
     {
@@ -196,6 +197,9 @@ int main(int argc, const char *argv[])
 
     std::cout << std::flush;
     std::cerr << std::flush;
+
+    upEvents.emplace_back(UpEvent::Type::Ping);
+    pingClock.restart();
 
     while (window.isOpen() || serverSide)
     {
@@ -338,6 +342,7 @@ int main(int argc, const char *argv[])
                     console << downEvent.message;
                     break;
                 case DownEvent::Type::Response:
+                {
                     std::wstringstream wss;
                     std::wstring temp;
                     wss.str(downEvent.message);
@@ -355,12 +360,33 @@ int main(int argc, const char *argv[])
                             alive = 100;
                         }
                     }
+                }
+                break;
+                case DownEvent::Type::Pong:
+                    ping = (5.f * ping + pingClock.getElapsedTime().asSeconds()) / 6.f;
+                    pingClock.restart();
+                    upEvents.emplace_back(UpEvent::Type::Ping);
                     break;
                 }
             }
             downEvents.clear();
 
-            if (!downEventDirectDrawReceived)
+            if (downEventDirectDrawReceived)
+            {
+                downEventDirectDrawReceived = false;
+
+                const float halfPing = ping / 2.f;
+
+                for (auto &polygon : downEventDirectDraw.polygons)
+                {
+                    polygon.states.transform.rotate(polygon.angularVelocity * halfPing, polygon.position).translate(polygon.linearVelocity * halfPing);
+                    polygon.position += polygon.linearVelocity * halfPing;
+                }
+
+                for (auto &player : downEventDirectDraw.players)
+                    player.position += player.linearVelocity * halfPing;
+            }
+            else
             {
                 for (auto &polygon : downEventDirectDraw.polygons)
                     polygon.states.transform.translate(polygon.linearVelocity * delta).rotate(polygon.angularVelocity * delta, polygon.position);
@@ -368,8 +394,6 @@ int main(int argc, const char *argv[])
                 for (auto &player : downEventDirectDraw.players)
                     player.position += player.linearVelocity * delta;
             }
-            else
-                downEventDirectDrawReceived = false;
 
             window.clear(sf::Color::Black);
 
@@ -381,8 +405,10 @@ int main(int argc, const char *argv[])
                     cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
                     scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
                     alive = 100;
+                    text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp) + L"\nSpeed: " + std::to_wstring((int)std::roundf(player.linearVelocity.getLength())));
                 }
-                text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
+                else
+                    text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
                 text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
                 text.setScale(scale);
                 window.draw(text);
@@ -402,9 +428,9 @@ int main(int argc, const char *argv[])
 
             particleSystem.update(delta);
 
-            text.setString(L"Fps: "s + std::to_wstring((int)std::roundf(fps)));
+            text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f)));
             text.setScale(scale);
-            text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 80, 18}));
+            text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
 
             window.draw(text);
             window.draw(grid);
@@ -429,7 +455,7 @@ int main(int argc, const char *argv[])
             for (auto &el : upEventsRespondable)
             {
                 UpEvent &upEvent = el.first;
-                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid)
+                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid && upEvent.type != UpEvent::Type::Ping)
                     continue;
                 upEventCounter++;
 
@@ -461,10 +487,23 @@ int main(int argc, const char *argv[])
                         downEvents.push_back(message);
                         break;
                     }
-                    DownEvent response(DownEvent::Type::Response);
-                    response.message = commandProcessor.call(upEvent.command);
+                    {
+                        DownEvent response(DownEvent::Type::Response);
+                        response.message = commandProcessor.call(upEvent.command);
+                        packet.clear();
+                        packet << response;
+                    }
+                    {
+                        mainWantsToEnter = true;
+                        std::lock_guard<std::mutex> lk(serverMutex);
+                        server.respond(packet, el.second);
+                        mainWantsToEnter = false;
+                    }
+                    cv.notify_one();
+                    break;
+                case UpEvent::Type::Ping:
                     packet.clear();
-                    packet << response;
+                    packet << DownEvent(DownEvent::Type::Pong);
                     {
                         mainWantsToEnter = true;
                         std::lock_guard<std::mutex> lk(serverMutex);
@@ -544,6 +583,15 @@ int main(int argc, const char *argv[])
                     }
                 }
             }
+            else
+            {
+                if (pingClock.getElapsedTime().asSeconds() > 1.f)
+                {
+                    pingClock.restart();
+                    upEvents.emplace_back(UpEvent::Type::Ping);
+                }
+            }
+
             clock1.restart();
             ticks = 0;
             std::cout << std::flush;

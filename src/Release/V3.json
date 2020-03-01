@@ -1,8 +1,8 @@
 {
     "linearDamping": 0.75,
-    "angularDamping": 1.65,
+    "angularDamping": 1.7,
     "force": 360,
-    "torque": 100,
+    "torque": 120,
     "friction": 0,
     "density": 3.6,
     "reload": [0.5],

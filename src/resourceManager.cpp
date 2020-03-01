@@ -1,6 +1,5 @@
 #include "resourceManager.h"
 #include <filesystem>
-#include <iostream>
 
 sf::SoundBuffer &getSoundBuffer(const std::string &name)
 {
@@ -20,16 +19,12 @@ const json &resourceManager::getJSON(const std::string &name)
     {
         for (auto &p : std::filesystem::directory_iterator("."))
             if (p.path().extension() == ".json")
-            {
-                std::cout<<p.path()<<std::endl;
                 getJSON(p.path().stem().string());
-            }
 
         std::string str;
         for (const auto &el : jsonMap)
-        {
             str += el.second.dump();
-        }
+
         static json ret = {{"sha256", digestpp::sha256().absorb(str).hexdigest()}};
         return ret;
     }

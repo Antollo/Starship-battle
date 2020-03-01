@@ -17,7 +17,8 @@ public:
         Aim,
         Shoot,
         AimCoords,
-        Command
+        Command,
+        Ping
     };
     UpEvent(const Type &newType, const Object::ObjectId &newTargetId, const bool &newState)
         : type(newType), targetId(newTargetId), state(newState), coords(Vec2f(0.f, 0.f)), command(L"#")
@@ -35,6 +36,12 @@ public:
         : type(newType), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(newCommand)
     {
         assert(type == Type::Command);
+    }
+
+    UpEvent(const Type &newType)
+        : type(newType), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(L"#")
+    {
+        assert(type == Type::Ping);
     }
 
     UpEvent()
@@ -69,7 +76,8 @@ public:
         DirectDraw,
         Collision,
         Message,
-        Response
+        Response,
+        Pong
     };
 
     DownEvent(DownEvent &&downEvent)

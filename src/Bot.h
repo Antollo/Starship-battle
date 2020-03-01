@@ -48,7 +48,7 @@ public:
             while (aimAngle < -pi)
                 aimAngle += 2.f * pi;
 
-            if (getCenterPosition().getSquaredDistance(newAimCoords) < 80000.f * 80000.f && aimAngle > -0.6f && aimAngle < 0.6f)
+            if (getCenterPosition().getSquaredDistance(newAimCoords) < 100000.f * 80000.f && aimAngle > -0.6f && aimAngle < 0.6f)
                 shoot = true;
             else
                 shoot = false;

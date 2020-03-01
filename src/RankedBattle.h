@@ -5,6 +5,7 @@
 #include "CommandProcessor.h"
 #include "Event.h"
 #include "Object.h"
+#include "Stats.h"
 
 template <class S>
 class RankedBattle
@@ -24,6 +25,9 @@ public:
         commandProcessor.call(L"borders"s);
 
         Object::ObjectId id = Spaceship::create(CommandProcessor::converter.to_bytes(shipType), pilotName)->getId();
+        Stats::removeTeam(pilotName);
+        Stats::addTeam(pilotName);
+        Stats::joinTeam(pilotName, id);
 
         if (httpFuture.valid())
             httpFuture.get();
@@ -78,8 +82,10 @@ public:
                 downEvents.emplace_back(DownEvent::Type::Response);
                 downEvents.back().message = L"print Ranked battle ended.\n"s +
                                             L"You survived for: "s +
-                                            std::to_wstring(int(std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count())) +
-                                            L" seconds.\n"s;
+                                            std::to_wstring((int)std::roundf(std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count())) +
+                                            L" seconds.\nYou dealt: "s +
+                                            std::to_wstring((int)std::roundf(Stats::getDamageDealt(pilotName))) +
+                                            L" damage.\n"s;
 
                 if (httpFuture.valid())
                     httpFuture.get();
@@ -100,11 +106,13 @@ public:
                     }
                     request.setBody((json{
                                          {"pilotName", CommandProcessor::converter.to_bytes(pilotName)},
+                                         {"damageDealt", (int)std::roundf(Stats::getDamageDealt(pilotName))},
                                          {"shipType", CommandProcessor::converter.to_bytes(shipType)},
                                          {"secret", deobfuscate(secret)},
                                          {"hash", resourceManager::getJSON("hash")}})
                                         .dump());
                     response = http.sendRequest(request);
+                    Stats::removeTeam(pilotName);
 
                     if (response.getStatus() != sf::Http::Response::Created)
                     {
