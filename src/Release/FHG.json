@@ -3,7 +3,7 @@
     "bulletVelocity": 360,
     "accuracy": 0.01,
     "damage": 85,
-    "penetration": 85,
+    "penetration": 80,
     "origin": {
         "x": 2,
         "y": 0

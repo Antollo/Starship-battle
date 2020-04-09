@@ -1,13 +1,13 @@
 {
     "linearDamping": 0.7,
     "angularDamping": 1.4,
-    "force": 170,
+    "force": 210,
     "torque": 70,
     "friction": 1,
     "density": 5.6,
-    "reload": [1.2],
+    "reload": [1.3],
     "hp": 680,
-    "armor": 75,
+    "armor": 77,
     "points": [
         {
             "x": 0,

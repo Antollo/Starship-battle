@@ -1,7 +1,7 @@
 #include "resourceManager.h"
 #include <filesystem>
 
-sf::SoundBuffer &getSoundBuffer(const std::string &name)
+const sf::SoundBuffer &resourceManager::getSoundBuffer(const std::string &name)
 {
     static std::map<std::string, sf::SoundBuffer> soundBufferMap;
     if (!soundBufferMap.count(name))

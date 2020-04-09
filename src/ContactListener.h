@@ -90,7 +90,7 @@ private:
             //float damage = std::round(impactVelocity.getSquaredLength() * bullet->massData.mass / 2.f * Object::rng025(Object::mt));
             float damage = std::roundf(bullet->damage * Object::rng025(Object::mt));
             float penetration = bullet->penetration * Object::rng025(Object::mt);
-            if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 18.f && penetration > spaceship->armor)
+            if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 20.f && penetration > spaceship->armor)
             {
                 Stats::damageDealt(bullet->getId(), std::min(damage, spaceship->hp));
                 Stats::hpLost(spaceship->getId(), std::min(damage, spaceship->hp));

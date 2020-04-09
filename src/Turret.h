@@ -34,7 +34,7 @@ public:
         damage = jsonObject["damage"].get<float>();
         penetration = jsonObject["penetration"].get<float>();
 
-        rng.param(std::uniform_real_distribution<float>::param_type(-accuracy, accuracy));
+        rng.param(std::normal_distribution<float>::param_type(0, accuracy / 1.3f));
     }
     bool setRotation(const float& angle)
     {
@@ -60,7 +60,7 @@ private:
     sf::VertexArray polygon;
     std::vector<Vec2f> bulletShape;
     float bulletVelocity, maxAngle, accuracy, penetration, damage;
-    std::uniform_real_distribution<float> rng;
+    std::normal_distribution<float> rng;
 };
 
 #endif

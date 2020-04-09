@@ -26,7 +26,7 @@ public:
     static constexpr Id id = Id::Normal;
     static constexpr int velocityIterations = 8;
     static constexpr int positionIterations = 3;
-    static constexpr float minimumBulletVelocity = 0.5f;
+    static constexpr float minimumBulletVelocity = 1.f;
 };
 
 class Low
@@ -35,7 +35,7 @@ public:
     static constexpr Id id = Id::Low;
     static constexpr int velocityIterations = 6;
     static constexpr int positionIterations = 2;
-    static constexpr float minimumBulletVelocity = 0.7f;
+    static constexpr float minimumBulletVelocity = 4.f;
 };
 
 template <class T>

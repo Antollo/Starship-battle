@@ -12,6 +12,7 @@
 namespace resourceManager
 {
     void playSound(const std::string& name);
+    const sf::SoundBuffer &getSoundBuffer(const std::string &name);
     const sf::Font& getFont(const std::string& name);
     const json& getJSON(const std::string& name);
 }

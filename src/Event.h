@@ -14,7 +14,6 @@ public:
         Forward,
         Left,
         Right,
-        Aim,
         Shoot,
         AimCoords,
         Command,

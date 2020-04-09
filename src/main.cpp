@@ -60,7 +60,7 @@ int main(int argc, const char *argv[])
     sf::TcpSocket socket;
     sf::Text text;
     DownEvent downEvent, downEventDirectDraw;
-    bool rightMouseButtonDown = false, downEventDirectDrawReceived = false;
+    bool downEventDirectDrawReceived = false;
     int alive = 0;
     decltype(Object::objects)::iterator i, j;
     float mouseScrollMultiplier = 1.f, ping = 0.f;
@@ -100,21 +100,12 @@ int main(int argc, const char *argv[])
             antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
         }
 
-        icon.loadFromFile("icon.png");
-        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
-        window.setVerticalSyncEnabled(true);
-        window.setMouseCursorVisible(false);
-        window.requestFocus();
-        window.setView({{0.f, 0.f}, window.getView().getSize()});
-        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
-
-        glLineWidth(resourceManager::getJSON("config")["lineWidth"].get<float>());
-        glPointSize(resourceManager::getJSON("config")["lineWidth"].get<float>());
-
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
 
         receivingThread = std::async(std::launch::async, [&client, &running, &clientMutex, &downEventsBuffer, &socketStatus, &cv, &mainWantsToEnter]() {
+            resourceManager::getSoundBuffer("ricochet.ogg");
+            resourceManager::getSoundBuffer("explosion.wav");
             sf::Packet packet;
             DownEvent downEvent;
             while (running)
@@ -133,6 +124,17 @@ int main(int argc, const char *argv[])
                 }
             }
         });
+
+        icon.loadFromFile("icon.png");
+        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
+        window.setVerticalSyncEnabled(true);
+        window.setMouseCursorVisible(false);
+        window.requestFocus();
+        window.setView({{0.f, 0.f}, window.getView().getSize()});
+        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+
+        glLineWidth(resourceManager::getJSON("config")["lineWidth"].get<float>());
+        glPointSize(resourceManager::getJSON("config")["lineWidth"].get<float>());
     }
 
     //Server
@@ -264,10 +266,6 @@ int main(int argc, const char *argv[])
                     bool ev = event.type == sf::Event::MouseButtonPressed;
                     switch (event.mouseButton.button)
                     {
-                    case sf::Mouse::Button::Right:
-                        rightMouseButtonDown = ev;
-                        upEvents.emplace_back(UpEvent::Type::Aim, Object::thisPlayerId, ev);
-                        break;
                     case sf::Mouse::Button::Left:
                         upEvents.emplace_back(UpEvent::Type::Shoot, Object::thisPlayerId, ev);
                         break;
@@ -288,11 +286,8 @@ int main(int argc, const char *argv[])
                     upEvents.emplace_back(UpEvent::Type::Command, command);
             }
 
-            if (rightMouseButtonDown)
+            if (Object::thisPlayerId != -1)
                 upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
-
-            if (upEvents.empty())
-                upEvents.emplace_back();
 
             {
                 mainWantsToEnter = true;
@@ -428,7 +423,7 @@ int main(int argc, const char *argv[])
 
             particleSystem.update(delta);
 
-            text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f)));
+            text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
             text.setScale(scale);
             text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
 
@@ -469,9 +464,6 @@ int main(int argc, const char *argv[])
                     break;
                 case UpEvent::Type::Right:
                     dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).right = upEvent.state;
-                    break;
-                case UpEvent::Type::Aim:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aim = upEvent.state;
                     break;
                 case UpEvent::Type::Shoot:
                     dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).shoot = upEvent.state;

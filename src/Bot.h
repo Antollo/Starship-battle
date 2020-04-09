@@ -40,7 +40,6 @@ public:
 
         if (newAimCoords != Vec2f{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()})
         {
-            aim = true;
             aimCoords = newAimCoords; //+ Vec2f{worldScale * (rng01(mt) - 0.5f), worldScale * (rng01(mt) - 0.5f)};
             float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
             while (aimAngle > pi)
@@ -75,7 +74,6 @@ public:
         }
         else
         {
-            aim = false;
             shoot = false;
             right = false;
             left = false;

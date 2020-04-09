@@ -1,13 +1,13 @@
 {
     "linearDamping": 0.65,
-    "angularDamping": 3.2,
-    "force": 290,
+    "angularDamping": 3.8,
+    "force": 370,
     "torque": 200,
     "friction": 0.5,
-    "density": 40,
+    "density": 50,
     "reload": [4.3],
     "hp": 440,
-    "armor": 58,
+    "armor": 50,
     "points": [
         {
             "x": 0,
@@ -25,18 +25,18 @@
     "turrets": [
         {
             "type": "HG",
-            "x": 1.5,
-            "y": -0.5
+            "x": 1.6,
+            "y": -0.8
         },
         {
             "type": "HG",
-            "x": 1.5,
-            "y": 2.5
+            "x": 1.6,
+            "y": 2.8
         }
     ], "shields": [
         {
-            "x": 0.25,
-            "y": -1.85,
+            "x": -0.25,
+            "y": -2,
             "points": [
                 {
                     "x": 2,
@@ -57,8 +57,8 @@
             ]
         },
         {
-            "x": 0.25,
-            "y": 0.85,
+            "x": -0.25,
+            "y": 1,
             "points": [
                 {
                     "x": 0,

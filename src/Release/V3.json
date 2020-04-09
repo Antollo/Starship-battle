@@ -1,7 +1,7 @@
 {
     "linearDamping": 0.75,
     "angularDamping": 1.7,
-    "force": 360,
+    "force": 370,
     "torque": 120,
     "friction": 0,
     "density": 3.6,

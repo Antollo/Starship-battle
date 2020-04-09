@@ -101,14 +101,14 @@ public:
         if (forward) onForward();
         if (left) onLeft();
         if (right) onRight();
-        if (aim) onAim();
+        onAim();
         if (shoot) onShoot();
         if (hp < 0.f) destroy = true;
     }
-    bool forward, left, right, aim, shoot;
+    bool forward, left, right, shoot;
     Vec2f aimCoords;
 private:
-    Spaceship(const std::string& type, const std::wstring& newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1)) : forward(false), left(false), right(false), aim(false), shoot(false), playerId(newPlayerId)
+    Spaceship(const std::string& type, const std::wstring& newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1)) : forward(false), left(false), right(false), shoot(false), playerId(newPlayerId)
     {
         json jsonObject = resourceManager::getJSON(type);
 
