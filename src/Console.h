@@ -48,7 +48,7 @@ public:
     {
         textOutput.setString(textOutput.getString() + std::to_wstring(out));
         notificationOutput.setString(std::to_wstring(out));
-        std::wcout << std::to_wstring(out);
+        //std::wcout << std::to_wstring(out);
         eraseOldOut();
         correctOrigin();
         return *this;
@@ -57,7 +57,7 @@ public:
     {
         textOutput.setString(textOutput.getString() + out);
         notificationOutput.setString(out);
-        std::wcout << out;
+        //std::wcout << out;
         eraseOldOut();
         correctOrigin();
         return *this;
@@ -66,7 +66,7 @@ public:
     {
         textOutput.setString(textOutput.getString() + out);
         notificationOutput.setString(out);
-        std::wcout << out;
+        //std::wcout << out;
         eraseOldOut();
         correctOrigin();
         return *this;
@@ -123,7 +123,7 @@ public:
                 entered.push(textInput.getString().substring(1, textInput.getString().getSize() - 2));
                 history.insert(history.begin() + 1, entered.back());
                 textOutput.setString(textOutput.getString() + entered.back() + '\n');
-                std::wcout << (entered.back() + L"\n");
+                //std::wcout << (entered.back() + L"\n");
                 textInput.setString(L">_");
                 correctOrigin();
                 break;

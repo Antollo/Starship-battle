@@ -1,7 +1,7 @@
 {
-    "version": "0.3.8",
+    "version": "0.4.0",
     "executable": "starship_battle_game",
-    "antialiasingLevel": 16,
+    "antialiasingLevel": 8,
     "mouseScrollMultiplier": -1,
     "lineWidth": 1.5,
     "spaceships": [

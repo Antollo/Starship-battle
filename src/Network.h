@@ -6,21 +6,43 @@
 #include <memory>
 #include <iostream>
 #include <atomic>
+#include <unordered_map>
 #include <SFML/Network.hpp>
+
+namespace std
+{
+    template <>
+    struct hash<sf::IpAddress>
+    {
+        size_t operator()(const sf::IpAddress &ip) const
+        {
+            return hash<unsigned int>()(ip.toInteger());
+        }
+    };
+}; // namespace std
 
 class Client
 {
 public:
-    Client(sf::TcpSocket &newSocket) : socket(newSocket)
+    Client(sf::TcpSocket &newSocket, sf::UdpSocket &newUdpSocket) : socket(newSocket), udpSocket(newUdpSocket)
     {
         selector.add(socket);
+        selector.add(udpSocket);
     }
 
     sf::Socket::Status receive(sf::Packet &packet, sf::Time timeout = sf::microseconds(1))
     {
         if (selector.wait(timeout))
+        {
+            if (selector.isReady(udpSocket))
+            {
+                sf::IpAddress remoteAddress;
+                unsigned short remotePort;
+                return udpSocket.receive(packet, remoteAddress, remotePort);
+            }
             if (selector.isReady(socket))
                 return socket.receive(packet);
+        }
         return sf::Socket::NotReady;
     }
 
@@ -29,31 +51,43 @@ public:
         return socket.send(packet);
     }
 
+    sf::Socket::Status sendUdp(sf::Packet &packet)
+    {
+        return udpSocket.send(packet, socket.getRemoteAddress(), socket.getRemotePort());
+    }
+
 private:
     sf::TcpSocket &socket;
+    sf::UdpSocket &udpSocket;
     sf::SocketSelector selector;
 };
 
 class Server
 {
 public:
-    using iterator = std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>>::iterator;
+    using iterator = std::pair<sf::TcpSocket *, sf::IpAddress>;
+    enum class protocol
+    {
+        UDP,
+        TCP
+    };
 
-    Server(sf::TcpListener &newListener) : listener(newListener), activeCounter(0)
+    Server(sf::TcpListener &newListener, sf::UdpSocket &newUdpSocket) : listener(newListener), udpSocket(newUdpSocket), activeCounter(0)
     {
         selector.add(listener);
+        selector.add(udpSocket);
     }
 
-    sf::Socket::Status receive(sf::Packet &packet, iterator &last, sf::Time timeout = sf::microseconds(1))
+    sf::Socket::Status receive(sf::Packet &packet, iterator &remote, sf::Time timeout = sf::microseconds(1))
     {
         if (selector.wait(timeout))
         {
             if (selector.isReady(listener))
             {
-                clients.push_back({std::make_unique<sf::TcpSocket>(), false});
-                if (listener.accept(*clients.back().first) == sf::Socket::Done)
+                clients.push_back(std::make_unique<sf::TcpSocket>());
+                if (listener.accept(*clients.back()) == sf::Socket::Done)
                 {
-                    selector.add(*clients.back().first);
+                    selector.add(*clients.back());
                     std::cout << "New client connected.\n";
                 }
                 else
@@ -62,22 +96,40 @@ public:
                 }
             }
 
-            for (auto it = clients.begin(); it != clients.end(); it++)
+            if (selector.isReady(udpSocket))
             {
-                if (selector.isReady(*it->first))
+                unsigned short port;
+                sf::Socket::Status status = udpSocket.receive(packet, remote.second, port);
+                if (active[remote.second] == false)
                 {
-                    last = it;
-                    if (it->second == false)
+                    activeCounter++;
+                    active[remote.second] = true;
+                }
+                return status;
+            }
+
+            for (auto it = clients.begin(); it != clients.end();)
+            {
+                auto jt = it++;
+                sf::TcpSocket &current = **jt;
+                if (selector.isReady(current))
+                {
+                    remote.first = &current;
+                    remote.second = current.getRemoteAddress();
+                    if (active[remote.second] == false)
+                    {
                         activeCounter++;
-                    it->second = true;
-                    sf::Socket::Status status = it->first->receive(packet);
+                        active[remote.second] = true;
+                    }
+                    sf::Socket::Status status = current.receive(packet);
                     if (status == sf::Socket::Disconnected)
                     {
                         std::cout << "Client disconnected.\n";
                         activeCounter--;
-                        selector.remove(*it->first);
-                        it->first->disconnect();
-                        clients.erase(it);
+                        active.erase(remote.second);
+                        selector.remove(current);
+                        current.disconnect();
+                        clients.erase(jt);
                     }
                     return status;
                 }
@@ -86,40 +138,76 @@ public:
         return sf::Socket::Status::Error;
     }
 
-    sf::Socket::Status respond(sf::Packet &packet, iterator &last)
+    sf::Socket::Status respond(sf::Packet &packet, iterator &remote)
     {
-        return last->first->send(packet);
+        return remote.first->send(packet);
+    }
+
+    sf::Socket::Status respondUdp(sf::Packet &packet, iterator &remote)
+    {
+        return udpSocket.send(packet, remote.second, udpSocket.getLocalPort() + 1);
+    }
+
+    sf::Socket::Status send(sf::Packet &packet)
+    {
+        for (auto &client : clients)
+        {
+            client->send(packet);
+        }
+        return sf::Socket::Status::Done;
     }
 
     sf::Socket::Status sendToActive(sf::Packet &packet)
     {
-        for (auto &pair : clients)
+        if (packet.getDataSize() < sf::UdpSocket::MaxDatagramSize)
+            return sendToActiveUdp(packet);
+        else
+            return sendToActiveTcp(packet);
+    }
+
+    int getActiveCounter() const { return activeCounter; }
+    protocol getProtocol() const
+    {
+        return static_cast<protocol>(static_cast<int>(p));
+    }
+
+private:
+    sf::Socket::Status sendToActiveUdp(sf::Packet &packet)
+    {
+        p = static_cast<int>(protocol::UDP);
+        for (auto &pair : active)
         {
-            if (pair.second)
+            if (pair.second == true)
             {
                 pair.second = false;
                 activeCounter--;
-                pair.first->send(packet);
+                udpSocket.send(packet, pair.first, udpSocket.getLocalPort() + 1);
             }
         }
         return sf::Socket::Status::Done;
     }
 
-    sf::Socket::Status send(sf::Packet &packet)
+    sf::Socket::Status sendToActiveTcp(sf::Packet &packet)
     {
-        for (auto &pair : clients)
+        p = static_cast<int>(protocol::TCP);
+        sf::IpAddress address;
+        for (auto &client : clients)
         {
-            pair.first->send(packet);
+            address = client->getRemoteAddress();
+            if (active[address] == true)
+            {
+                active[address] = false;
+                activeCounter--;
+                client->send(packet);
+            }
         }
         return sf::Socket::Status::Done;
     }
-
-    int getActiveCounter() const { return activeCounter; }
-
-private:
-    std::atomic<int> activeCounter;
+    std::atomic<int> activeCounter, p;
     sf::TcpListener &listener;
-    std::vector<std::pair<std::unique_ptr<sf::TcpSocket>, bool>> clients;
+    sf::UdpSocket &udpSocket;
+    std::vector<std::unique_ptr<sf::TcpSocket>> clients;
+    std::unordered_map<sf::IpAddress, bool> active;
     sf::SocketSelector selector;
 };
 

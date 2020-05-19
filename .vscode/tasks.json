@@ -10,6 +10,12 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "Start-Process -FilePath ./src/Release/starship_battle_game.exe -ArgumentList \"server\", \"normal\", \"port\", \"1717\" -WorkingDirectory ./src/Release ; Start-Process -FilePath ./src/Release/starship_battle_game.exe -ArgumentList \"ip\", \"127.0.0.1\", \"port\", \"1717\", \"command\", \"ranked\" -WorkingDirectory ./src/Release",
+            "problemMatcher": []
         }
     ]
 }

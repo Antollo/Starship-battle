@@ -2,6 +2,7 @@
 #define PROTECTOR_H_
 
 #ifdef _WIN32
+#undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501
 #define VC_EXTRALEAN
 #include "Windows.h"

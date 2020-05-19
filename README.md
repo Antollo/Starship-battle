@@ -13,7 +13,7 @@ Download game launcher [here](https://github.com/Antollo/Starship-battle/release
 ### First time?
 
 Click `Play game` in launcher to start the game. Type `create T-4A yourName` (where `T-4A` is spaceship name and `yourName` is pilot's name) and hit enter. Then type `create-bots` and attack them! 
-Control the ship with `W`, `A` and `D`, aim with right mouse button and fire with left mouse button! Use `help` command to learn more (e.g. how to list all spaceships names).
+Control the ship with `W`, `A` and `D`, aim with mouse and fire with left mouse button! Use `help` command to learn more (e.g. how to list all spaceships names).
 
 _Not recommended_: Latest game executable is available [here](https://ci.appveyor.com/api/projects/antollo/starship-battle/artifacts/src\artifacts.zip?branch=master&job=Image%3A%20Visual%20Studio%202017).
 

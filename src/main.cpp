@@ -37,9 +37,10 @@ int main(int argc, const char *argv[])
     Args args(argc, argv);
     bool serverSide = (args["server"].size());
     int port = std::stoi(args["port"]);
+    sf::UdpSocket udpSocket;
     std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
     float delta = 0.f;
-    sf::Clock clock1, clock033;
+    sf::Clock clock1, clock_f;
     int velocityIterations = 8, positionIterations = 3, ticks = 0;
     float fps = 100.f;
     sf::Socket::Status socketStatus;
@@ -84,8 +85,17 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
+        if (udpSocket.bind(port + 1) != sf::Socket::Status::Done)
+        {
+            if (udpSocket.bind(port + 1) != sf::Socket::Status::Done)
+            {
+                std::cerr << "Could not bind udp socket to port " << port + 1 << ".\n";
+                std::cerr << "Please try again later." << std::flush;
+                return 1;
+            }
+        }
     }
-    Client client(socket);
+    Client client(socket, udpSocket);
     if (!serverSide)
     {
         text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
@@ -127,7 +137,8 @@ int main(int argc, const char *argv[])
 
         icon.loadFromFile("icon.png");
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
-        window.setVerticalSyncEnabled(true);
+        window.setVerticalSyncEnabled(false);
+        window.setFramerateLimit(60);
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
@@ -142,8 +153,19 @@ int main(int argc, const char *argv[])
     CommandProcessor commandProcessor; //For scripting in console (commands are run on server side)
     sf::TcpListener listener;          //Server
     if (serverSide)
+    {
         listener.listen(port);
-    Server server(listener);
+        if (udpSocket.bind(port) != sf::Socket::Status::Done)
+        {
+            if (udpSocket.bind(port) != sf::Socket::Status::Done)
+            {
+                std::cerr << "Could not bind udp socket to port " << port << ".\n";
+                std::cerr << "Please try again later." << std::flush;
+                return 1;
+            }
+        }
+    }
+    Server server(listener, udpSocket);
     RenderSerializer renderSerializer; //"Display" to Packet
     UpEvent upEvent;
     std::vector<DownEvent> downEvents;
@@ -208,7 +230,7 @@ int main(int argc, const char *argv[])
         now = std::chrono::high_resolution_clock::now();
         delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
         last = now;
-        fps = (5.f * fps + 1.f / delta) / 6.f;
+        fps = (9.f * fps + 1.f / delta) / 10.f;
         ticks++;
 
         //client
@@ -296,7 +318,16 @@ int main(int argc, const char *argv[])
                 {
                     packet.clear();
                     packet << upEvent;
-                    client.send(packet);
+                    switch (upEvent.type)
+                    {
+                    case UpEvent::Type::AimCoords:
+                    case UpEvent::Type::Ping:
+                        client.sendUdp(packet);
+                        break;
+                    default:
+                        client.send(packet);
+                        break;
+                    }
                 }
                 std::swap(downEvents, downEventsBuffer);
                 if (socketStatus == sf::Socket::Status::Disconnected)
@@ -358,7 +389,7 @@ int main(int argc, const char *argv[])
                 }
                 break;
                 case DownEvent::Type::Pong:
-                    ping = (5.f * ping + pingClock.getElapsedTime().asSeconds()) / 6.f;
+                    ping = (9.f * ping + pingClock.getElapsedTime().asSeconds()) / 10.f;
                     pingClock.restart();
                     upEvents.emplace_back(UpEvent::Type::Ping);
                     break;
@@ -499,7 +530,7 @@ int main(int argc, const char *argv[])
                     {
                         mainWantsToEnter = true;
                         std::lock_guard<std::mutex> lk(serverMutex);
-                        server.respond(packet, el.second);
+                        server.respondUdp(packet, el.second);
                         mainWantsToEnter = false;
                     }
                     cv.notify_one();
@@ -513,8 +544,22 @@ int main(int argc, const char *argv[])
             Object::world.Step(delta, velocityIterations, positionIterations, executor);
 
             lastActiveCounter = 0;
-            if (clock033.getElapsedTime().asSeconds() >= 0.033f)
-                clock033.restart(), lastActiveCounter = server.getActiveCounter();
+
+            if (server.getProtocol() == Server::protocol::TCP)
+            {
+                if (performanceLevelId != PerformanceLevels::Id::Low)
+                {
+                    if (clock_f.getElapsedTime().asSeconds() >= 0.04f)
+                        clock_f.restart(), lastActiveCounter = server.getActiveCounter();
+                }
+                else
+                    if (clock_f.getElapsedTime().asSeconds() >= 0.033f)
+                        clock_f.restart(), lastActiveCounter = server.getActiveCounter();
+            }
+            else
+                if (clock_f.getElapsedTime().asSeconds() >= 0.025f)
+                    clock_f.restart(), lastActiveCounter = server.getActiveCounter();
+            
             if (lastActiveCounter > 0)
             {
                 renderSerializer.clear();
@@ -549,6 +594,10 @@ int main(int argc, const char *argv[])
                 fps = float(ticks) / clock1.getElapsedTime().asSeconds();
                 std::cout << upEventCounter << " events received.\n";
                 std::cout << int(std::roundf(fps)) << " server frames per second.\n";
+                if (server.getProtocol() == Server::protocol::TCP)
+                    std::cout << "TCP is being used.\n";
+                else
+                    std::cout << "UDP is being used.\n";
                 upEventCounter = 0;
                 if (fps >= 100.f)
                 {
