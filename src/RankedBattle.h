@@ -6,6 +6,7 @@
 #include "Event.h"
 #include "Object.h"
 #include "Stats.h"
+#include "Map.h"
 
 template <class S>
 class RankedBattle
@@ -18,9 +19,10 @@ public:
     {
 
         Object::destroyAll();
-        std::size_t n = 60;
+        Object::setMap(OpenMap::create());
+        /*std::size_t n = 60;
         while (n--)
-            Rock::create();
+            Rock::create();*/
 
         commandProcessor.call(L"borders"s);
 

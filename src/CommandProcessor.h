@@ -55,6 +55,20 @@ private:
     std::function<std::wstring(Args...)> callable;
 };
 
+class Borders
+{
+public:
+    static constexpr float width = 20.f; // Half of width
+    static constexpr float pos = 400.f;
+    static void create()
+    {
+        Rock::create({{-width, pos - width}, {width, pos + width}, {-width, -pos + width}, {width, -pos - width}}, pos, 0.f);
+        Rock::create({{-width, pos + width}, {width, pos - width}, {-width, -pos - width}, {width, -pos + width}}, -pos, 0.f);
+        Rock::create({{pos - width, -width}, {pos + width, width}, {-pos + width, -width}, {-pos - width, width}}, 0.f, pos);
+        Rock::create({{pos + width, -width}, {pos - width, width}, {-pos - width, -width}, {-pos + width, width}}, 0.f, -pos);
+    }
+};
+
 class CommandProcessor
 {
 public:
@@ -120,9 +134,6 @@ private:
     std::list<std::unique_ptr<CallableBase>> jobs;
     std::list<std::unique_ptr<CallableBase>>::iterator it, jt;
     std::wstringstream inputsStream;
-
-    static constexpr float width = 20.f; // Half of width
-    static constexpr float pos = 400.f;
 };
 
 

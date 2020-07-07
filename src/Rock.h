@@ -20,6 +20,10 @@ public:
     {
         return dynamic_cast<Rock*>(objects.emplace(counter, new Rock(points, x, y)).first->second.get());
     }
+    static Rock* create(std::vector<Vec2f> points)
+    {
+        return dynamic_cast<Rock*>(objects.emplace(counter, new Rock(points)).first->second.get());
+    }
     const Object::TypeId getTypeId() const override
     {
         return Object::TypeId::Rock;
@@ -50,6 +54,9 @@ public:
         setOrigin(0, 0);
     }
 private:
+    static constexpr float baseDensity = 2.f;
+    static constexpr float baseDensityForBorders = 8.f;
+    static constexpr float randomDensity = 3.f;
     Rock()
     {
         b2BodyDef bodyDef;
@@ -77,7 +84,7 @@ private:
         shape.Set(reinterpret_cast<b2Vec2*>(points.data()), n);
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = 3.f + Object::rng01(mt) * 2.f;
+        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensity;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
@@ -112,7 +119,38 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = 3.f + Object::rng01(mt) * 2.f;
+        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensityForBorders;
+        fixtureDef.friction = 0.5f;
+        fixtureDef.filter.groupIndex = 0; 
+        fixtureDef.shape = &shape;
+        body->CreateFixture(&fixtureDef);
+
+        polygon.resize(points.size() + 1);
+        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
+        for (std::size_t i = 0; i < points.size(); i++)
+        {
+            polygon[i].position = (sf::Vector2f) points[i] * worldScale;
+            polygon[i].color = sf::Color::White;
+        }
+        polygon[points.size()] = polygon[0];
+    }
+    Rock(std::vector<Vec2f>& points)
+    {
+        b2BodyDef bodyDef;
+        bodyDef.type = b2_dynamicBody;
+        bodyDef.linearDamping = 0.5f;
+        bodyDef.angularDamping = 0.5f;
+        bodyDef.userData = this;
+        bodyDef.position.x = 0.f;
+        bodyDef.position.y = 0.f;
+
+        body = world.CreateBody(&bodyDef);
+        
+        b2PolygonShape shape;
+        shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
+
+        b2FixtureDef fixtureDef;
+        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensityForBorders;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;

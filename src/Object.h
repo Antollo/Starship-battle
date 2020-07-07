@@ -15,6 +15,8 @@
 
 using namespace std::string_literals;
 
+class Map;
+
 class RenderSerializable;
 
 class RenderSerializerBase
@@ -34,7 +36,7 @@ private:
     virtual void draw(RenderSerializerBase &renderSerializer, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept = 0;
 };
 
-class Object : public sf::Drawable,  public sf::Transformable, public RenderSerializable
+class Object : public sf::Drawable, public sf::Transformable, public RenderSerializable
 {
 public:
     using ObjectId = std::int32_t;
@@ -96,16 +98,23 @@ public:
         if (firstPhase)
             destroyAll(false);
     }
+    static void setMap(Map *m);
+    static const Map& getMap()
+    {
+        return *map;
+    }
+
 protected:
     ObjectId id;
     sf::VertexArray polygon;
+
 private:
-    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
+    virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
     {
         states.transform *= getTransform();
         target.draw(polygon, states);
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
+    void draw(RenderSerializerBase &target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
         target.draw(polygon, states, getCenterPosition(), getLinearVelocity(), getAngularVelocity());
@@ -119,6 +128,8 @@ private:
             return it.second.get() == this;
         }));*/
     }
+
+    static Map *map;
 };
 
 #endif

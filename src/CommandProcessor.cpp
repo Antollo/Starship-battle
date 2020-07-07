@@ -1,4 +1,5 @@
 #include "CommandProcessor.h"
+#include "Map.h"
 
 std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> CommandProcessor::converter;
 
@@ -59,23 +60,21 @@ CommandProcessor::CommandProcessor()
     });
 
     bind(L"borders", []() {
-        Rock::create({{-width, pos - width}, {width, pos + width}, {-width, -pos + width}, {width, -pos - width}}, pos, 0.f);
-        Rock::create({{-width, pos + width}, {width, pos - width}, {-width, -pos - width}, {width, -pos + width}}, -pos, 0.f);
-        Rock::create({{pos - width, -width}, {pos + width, width}, {-pos + width, -width}, {-pos - width, width}}, 0.f, pos);
-        Rock::create({{pos + width, -width}, {pos - width, width}, {-pos - width, -width}, {-pos + width, width}}, 0.f, -pos);
+        Borders::create();
         return L""s;
     });
 
     bind(L"bots-battle", [this]() {
         Object::destroyAll();
-        std::size_t n = 60;
-        while (n--)
-            Rock::create();
+        Object::setMap(Map::create());
+            /*std::size_t n = 60;
+            while (n--)
+                Rock::create();*/
             
         call(L"borders"s);
 
-        n = 10;
-        while(n--)
+        int n = 10;
+        while (n--)
             call(L"create-bots"s);
 
         for (const auto& obj : Object::objects)
@@ -143,7 +142,7 @@ CommandProcessor::CommandProcessor()
                L"    create-team [team name]              (aliased as 'ct')\n"
                L"    join-team [team name]                (aliased as 'jt')\n"
                L"    team-stats                           (aliased as 's')\n"
-               L"    message [body]                       \n"
+               L"    message [body]                       (aliased as 'm')\n"
                L"    delete                               \n"
                L"    credits                              \n"
                L"    beep                                 \n"s;
