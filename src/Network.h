@@ -30,20 +30,26 @@ public:
         selector.add(udpSocket);
     }
 
-    sf::Socket::Status receive(sf::Packet &packet, sf::Time timeout = sf::microseconds(1))
+    bool wait(sf::Time timeout = sf::microseconds(1))
     {
-        if (selector.wait(timeout))
+        return selector.wait(timeout);
+    }
+
+    sf::Socket::Status receive(sf::Packet &packet)
+    {
+        if (!wait())
+            return sf::Socket::NotReady;
+            
+        if (selector.isReady(udpSocket))
         {
-            if (selector.isReady(udpSocket))
-            {
-                sf::IpAddress remoteAddress;
-                unsigned short remotePort;
-                return udpSocket.receive(packet, remoteAddress, remotePort);
-            }
-            if (selector.isReady(socket))
-                return socket.receive(packet);
+            sf::IpAddress remoteAddress;
+            unsigned short remotePort;
+            return udpSocket.receive(packet, remoteAddress, remotePort);
         }
-        return sf::Socket::NotReady;
+        if (selector.isReady(socket))
+            return socket.receive(packet);
+
+        return sf::Socket::Error;
     }
 
     sf::Socket::Status send(sf::Packet &packet)
@@ -78,61 +84,66 @@ public:
         selector.add(udpSocket);
     }
 
-    sf::Socket::Status receive(sf::Packet &packet, iterator &remote, sf::Time timeout = sf::microseconds(1))
+    bool wait(sf::Time timeout = sf::microseconds(1))
     {
-        if (selector.wait(timeout))
-        {
-            if (selector.isReady(listener))
-            {
-                clients.push_back(std::make_unique<sf::TcpSocket>());
-                if (listener.accept(*clients.back()) == sf::Socket::Done)
-                {
-                    selector.add(*clients.back());
-                    std::cout << "New client connected.\n";
-                }
-                else
-                {
-                    clients.pop_back();
-                }
-            }
+        return selector.wait(timeout);
+    }
 
-            if (selector.isReady(udpSocket))
+    sf::Socket::Status receive(sf::Packet &packet, iterator &remote)
+    {
+        if(!wait())
+            return sf::Socket::NotReady;
+
+        if (selector.isReady(listener))
+        {
+            clients.push_back(std::make_unique<sf::TcpSocket>());
+            if (listener.accept(*clients.back()) == sf::Socket::Done)
             {
-                unsigned short port;
-                sf::Socket::Status status = udpSocket.receive(packet, remote.second, port);
+                selector.add(*clients.back());
+                std::cout << "New client connected.\n";
+            }
+            else
+            {
+                clients.pop_back();
+            }
+        }
+
+        if (selector.isReady(udpSocket))
+        {
+            unsigned short port;
+            sf::Socket::Status status = udpSocket.receive(packet, remote.second, port);
+            if (active[remote.second] == false)
+            {
+                activeCounter++;
+                active[remote.second] = true;
+            }
+            return status;
+        }
+
+        for (auto it = clients.begin(); it != clients.end();)
+        {
+            auto jt = it++;
+            sf::TcpSocket &current = **jt;
+            if (selector.isReady(current))
+            {
+                remote.first = &current;
+                remote.second = current.getRemoteAddress();
                 if (active[remote.second] == false)
                 {
                     activeCounter++;
                     active[remote.second] = true;
                 }
-                return status;
-            }
-
-            for (auto it = clients.begin(); it != clients.end();)
-            {
-                auto jt = it++;
-                sf::TcpSocket &current = **jt;
-                if (selector.isReady(current))
+                sf::Socket::Status status = current.receive(packet);
+                if (status == sf::Socket::Disconnected)
                 {
-                    remote.first = &current;
-                    remote.second = current.getRemoteAddress();
-                    if (active[remote.second] == false)
-                    {
-                        activeCounter++;
-                        active[remote.second] = true;
-                    }
-                    sf::Socket::Status status = current.receive(packet);
-                    if (status == sf::Socket::Disconnected)
-                    {
-                        std::cout << "Client disconnected.\n";
-                        activeCounter--;
-                        active.erase(remote.second);
-                        selector.remove(current);
-                        current.disconnect();
-                        clients.erase(jt);
-                    }
-                    return status;
+                    std::cout << "Client disconnected.\n";
+                    activeCounter--;
+                    active.erase(remote.second);
+                    selector.remove(current);
+                    current.disconnect();
+                    clients.erase(jt);
                 }
+                return status;
             }
         }
         return sf::Socket::Status::Error;

@@ -9,9 +9,9 @@ project(Starship_battle)
 #/GL /fp:fast -ffast-math
 
 if(MSVC)
-    add_compile_options(/O2 /W3 /MT /MP)
+    add_compile_options(/W3 /MT /MP /fp:fast)
 else()
-    add_compile_options(-O3 -static-libgcc -static-libstdc++)
+    add_compile_options(-O3 -static-libgcc -static-libstdc++ -ffast-math)
     link_libraries(stdc++fs)
 endif()
 

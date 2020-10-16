@@ -11,7 +11,6 @@
 #include <condition_variable>
 #include <SFML/Graphics.hpp>
 #include <SFML/Config.hpp>
-#include <SFML/OpenGL.hpp>
 #include "ContactListener.h"
 #include "Console.h"
 #include "Spaceship.h"
@@ -106,6 +105,7 @@ public:
             UpEvent upEvent;
             while (running)
             {
+                if(server.wait())
                 {
                     std::unique_lock<std::mutex> lk(serverMutex);
                     while (mainWantsToEnter)
@@ -236,21 +236,24 @@ public:
                 packet << renderSerializer.getDownEvent();
             }
 
+            if (lastActiveCounter > 0 || !downEvents.empty())
             {
-                mainWantsToEnter = true;
-                std::lock_guard<std::mutex> lk(serverMutex);
-                if (lastActiveCounter > 0)
-                    server.sendToActive(packet);
-                for (const auto &downEvent : downEvents)
                 {
-                    packet.clear();
-                    packet << downEvent;
-                    server.send(packet);
+                    mainWantsToEnter = true;
+                    std::lock_guard<std::mutex> lk(serverMutex);
+                    if (lastActiveCounter > 0)
+                        server.sendToActive(packet);
+                    for (const auto &downEvent : downEvents)
+                    {
+                        packet.clear();
+                        packet << downEvent;
+                        server.send(packet);
+                    }
+                    mainWantsToEnter = false;
                 }
-                mainWantsToEnter = false;
+                cv.notify_one();
+                downEvents.clear();
             }
-            cv.notify_one();
-            downEvents.clear();
 
             if (clock1.getElapsedTime().asSeconds() >= 1.f)
             {

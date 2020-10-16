@@ -122,6 +122,7 @@ public:
             DownEvent downEvent;
             while (running)
             {
+                if (client.wait())
                 {
                     std::unique_lock<std::mutex> lk(clientMutex);
                     while (mainWantsToEnter)
@@ -138,18 +139,18 @@ public:
         });
 
         icon.loadFromFile("icon.png");
-        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 1, 1, 0, false));
+        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
         window.setVerticalSyncEnabled(false);
-        window.setFramerateLimit(60);
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
         window.setKeyRepeatEnabled(false);
 
-        glLineWidth(resourceManager::getJSON("config")["lineWidth"].get<float>());
+        const float lineWidth = resourceManager::getJSON("config")["lineWidth"].get<float>();
+        glLineWidth(lineWidth);
+        glPointSize(lineWidth);
         glEnable(GL_POINT_SMOOTH);
-        glPointSize(resourceManager::getJSON("config")["lineWidth"].get<float>() * 1.5f);
 
         std::cout << std::flush;
         std::cerr << std::flush;
@@ -392,13 +393,12 @@ public:
             text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
 
             window.draw(text);
-            glEnable(GL_LINE_STIPPLE);
-            glLineStipple(2, 0x0101);
-            window.draw(grid);
-            glDisable(GL_LINE_STIPPLE);
             window.draw(cursor);
             window.draw(particleSystem);
             window.draw(console);
+            glLineWidth(lineWidth * 0.5f);
+            window.draw(grid);
+            glLineWidth(lineWidth);
             window.display();
 
             if (clock1.getElapsedTime().asSeconds() >= 1.f)

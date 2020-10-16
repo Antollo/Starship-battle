@@ -105,7 +105,8 @@
         "*.rh": "cpp",
         "*.ipp": "cpp",
         "filesystem": "cpp",
-        "concepts": "cpp"
+        "concepts": "cpp",
+        "compare": "cpp"
     },
     "cSpell.words": [
         "beforeend",
