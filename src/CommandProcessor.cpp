@@ -145,6 +145,7 @@ CommandProcessor::CommandProcessor()
                L"    message [body]                       (aliased as 'm')\n"
                L"    delete                               \n"
                L"    credits                              \n"
+               L"    grid [on/off]                        (aliased as 'g')\n"
                L"    beep                                 \n"s;
     });
 

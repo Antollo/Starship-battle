@@ -42,7 +42,7 @@ public:
         setOrigin(0, 0);
 		destroy = destroy || body->GetLinearVelocity().LengthSquared() < minimumBulletVelocity;
     }
-    static inline float minimumBulletVelocity;
+    static constexpr float minimumBulletVelocity = 1.f;
 private:
     Bullet(const std::vector<Vec2f>& points, const Vec2f& position, const float& angle, const float& newPenetration, const float& newDamage, const Vec2f& velocity, const int& index)
         : penetration(newPenetration), damage(newDamage)

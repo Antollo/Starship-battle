@@ -26,7 +26,6 @@
 #include "secret.h"
 #include "protector.h"
 #include "RankedBattle.h"
-#include "PerformanceLevels.h"
 
 class GameServer
 {
@@ -42,7 +41,8 @@ public:
         std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
         float delta = 0.f;
         sf::Clock clock1, clock_f;
-        int velocityIterations = 8, positionIterations = 3, ticks = 0;
+        constexpr int velocityIterations = 8, positionIterations = 3;
+        int ticks = 0;
         float fps = 100.f;
         std::atomic<bool> running = true, mainWantsToEnter = false;
         std::condition_variable cv;
@@ -75,7 +75,6 @@ public:
         std::vector<DownEvent> downEvents;
         std::vector<std::pair<UpEvent, Server::iterator>> upEventsRespondable, upEventsRespondableBuffer;
         std::mutex serverMutex;
-        PerformanceLevels::Id performanceLevelId = PerformanceLevels::Id::Normal;
         ContactListener contactListener(downEvents);
         Object::world.SetContactListener(&contactListener);
         b2ThreadPoolTaskExecutor executor;
@@ -95,9 +94,6 @@ public:
         });
 
         Object::setMap(Map::create());
-        /*std::size_t n = 60;
-            while (n--)
-                Rock::create();*/
 
         receivingThread = std::async(std::launch::async, [&server, &running, &serverMutex, &upEventsRespondableBuffer, &cv, &mainWantsToEnter]() {
             sf::Packet packet;
@@ -214,18 +210,11 @@ public:
 
             lastActiveCounter = 0;
 
-            if (server.getProtocol() == Server::protocol::TCP)
+            if (clock_f.getElapsedTime().asSeconds() >= 0.005f)
             {
-                if (performanceLevelId != PerformanceLevels::Id::Low)
-                {
-                    if (clock_f.getElapsedTime().asSeconds() >= 0.04f)
-                        clock_f.restart(), lastActiveCounter = server.getActiveCounter();
-                }
-                else if (clock_f.getElapsedTime().asSeconds() >= 0.033f)
-                    clock_f.restart(), lastActiveCounter = server.getActiveCounter();
+                clock_f.restart();
+                lastActiveCounter = server.getActiveCounter();
             }
-            else if (clock_f.getElapsedTime().asSeconds() >= 0.025f)
-                clock_f.restart(), lastActiveCounter = server.getActiveCounter();
 
             if (lastActiveCounter > 0)
             {
@@ -265,31 +254,6 @@ public:
                 else
                     std::cout << "UDP is being used.\n";
                 upEventCounter = 0;
-                if (fps >= 100.f)
-                {
-                    if (performanceLevelId != PerformanceLevels::Id::High)
-                    {
-                        std::cout << "High perforance level.\n";
-                        PerformanceLevels::set<PerformanceLevels::High>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
-                    }
-                }
-                else if (fps >= 50.f)
-                {
-                    if (performanceLevelId != PerformanceLevels::Id::Normal)
-                    {
-                        std::cout << "Normal perforance level.\n";
-                        PerformanceLevels::set<PerformanceLevels::Normal>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
-                    }
-                }
-                else
-                {
-                    if (performanceLevelId != PerformanceLevels::Id::Low)
-                    {
-                        std::cout << "Low perforance level.\n";
-                        PerformanceLevels::set<PerformanceLevels::Low>(performanceLevelId, velocityIterations, positionIterations, Bullet::minimumBulletVelocity);
-                    }
-                }
-
                 clock1.restart();
                 ticks = 0;
                 std::cout << std::flush;

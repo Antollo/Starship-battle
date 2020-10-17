@@ -6,11 +6,6 @@
 class ParticleSystem : public sf::Transformable, public sf::Drawable
 {
 public:
-    /*static ParticleSystem* create()
-    {
-        particleSystem = dynamic_cast<ParticleSystem*>(objects.emplace(counter, new ParticleSystem()).first->second.get());
-        return particleSystem;
-    }*/
     ParticleSystem(unsigned int count = 10000) :
     m_particles(count),
     m_vertices(count),
@@ -71,7 +66,7 @@ private:
         float angle  = Object::rng01(Object::mt) * pi * 2.f;
         float speed = Object::rng01(Object::mt) * 150.f;
         m_particles[index].velocity = sf::Vector2f(std::cos(angle) * speed, std::sin(angle) * speed);
-        m_particles[index].lifetime = Object::rng01(Object::mt) * 2.5f;
+        m_particles[index].lifetime = Object::rng01(Object::mt) * 3.f;
         m_vertices[index].position = m_emitter;
         m_vertices[index].color = sf::Color::White;
     }
