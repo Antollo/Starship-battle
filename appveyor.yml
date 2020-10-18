@@ -1,14 +1,15 @@
 version: 0.1.{build}
 image:
-    - Visual Studio 2017
+    - Visual Studio 2019
     - Ubuntu
 init:
     - sh: sudo apt update
-    - sh: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 70 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - sh: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 70 --slave /usr/bin/g++ g++ /usr/bin/g++-9
     - sh: sudo apt-get install -y libgl1-mesa-dev udev libudev-dev libopenal-dev libflac-dev libvorbis-dev libxrandr-dev libfreetype6-dev
 before_build:
     - git submodule update --init --recursive
-    - cmake .
+    - ps: cmake . -A Win32
+    - sh: cmake .
 build_script:
     - cmake --build . --config Release
 after_build:

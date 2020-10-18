@@ -41,7 +41,8 @@ public:
         std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
         float delta = 0.f;
         sf::Clock clock1, clock_f;
-        constexpr int velocityIterations = 8, positionIterations = 3;
+        constexpr int velocityIterations = 10, positionIterations = 4;
+        constexpr float respondToActiveInterval = 1.f / 150.f;
         int ticks = 0;
         float fps = 100.f;
         std::atomic<bool> running = true, mainWantsToEnter = false;
@@ -101,7 +102,7 @@ public:
             UpEvent upEvent;
             while (running)
             {
-                if(server.wait())
+                if (server.wait())
                 {
                     std::unique_lock<std::mutex> lk(serverMutex);
                     while (mainWantsToEnter)
@@ -210,7 +211,7 @@ public:
 
             lastActiveCounter = 0;
 
-            if (clock_f.getElapsedTime().asSeconds() >= 0.005f)
+            if (clock_f.getElapsedTime().asSeconds() >= respondToActiveInterval)
             {
                 clock_f.restart();
                 lastActiveCounter = server.getActiveCounter();

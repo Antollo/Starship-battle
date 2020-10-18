@@ -110,14 +110,42 @@ public:
 
     Type type;
 
-    class Polygon
+    class Polygon : public sf::Drawable
     {
     public:
-        sf::VertexArray vertices;
+        Polygon() {}
+        Polygon(sf::VertexArray v, sf::RenderStates s, Vec2f p, Vec2f lv, float av)
+            : vertices(v), states(s), position(p), linearVelocity(lv), angularVelocity(av) {}
+
+        Polygon(const Polygon &) = default;
+        Polygon(Polygon &&) = default;
+        Polygon &operator=(const Polygon &) = default;
+        Polygon &operator=(Polygon &&) = default;
+
+        mutable sf::VertexArray vertices;
         sf::RenderStates states;
         Vec2f position;
         Vec2f linearVelocity;
         float angularVelocity;
+
+    private:
+        static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 160);
+        virtual void draw(sf::RenderTarget &target, sf::RenderStates _) const
+        {
+            if (vertices.getPrimitiveType() == sf::LineStrip)
+            {
+                vertices.setPrimitiveType(sf::TriangleFan);
+                for (size_t i = 0; i < vertices.getVertexCount(); i++)
+                    vertices[i].color = semiTransparentBlack;
+                target.draw(vertices, states);
+                vertices.setPrimitiveType(sf::LineStrip);
+                for (size_t i = 0; i < vertices.getVertexCount(); i++)
+                    vertices[i].color = sf::Color::White;
+                target.draw(vertices, states);
+            }
+            else
+                target.draw(vertices, states);
+        }
     };
 
     class Player
@@ -150,6 +178,18 @@ public:
     std::wstring message;
 };
 
+inline sf::Packet &operator<<(sf::Packet &packet, const sf::Vector2f &v)
+{
+    packet << v.x << v.y;
+    return packet;
+}
+
+inline sf::Packet &operator>>(sf::Packet &packet, sf::Vector2f &v)
+{
+    packet >> v.x >> v.y;
+    return packet;
+}
+
 inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
 {
     //const float *matrix;
@@ -166,7 +206,7 @@ inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
         for (size_t i = 0; i < polygon.vertices.getVertexCount(); i++)
         {
             position = polygon.states.transform.transformPoint(polygon.vertices[i].position);
-            packet << position.x << position.y;
+            packet << position;
             /*packet << polygon.vertices[i].position.x << polygon.vertices[i].position.y;
             << polygon.vertices[i].color.r << polygon.vertices[i].color.g
             << polygon.vertices[i].color.b << polygon.vertices[i].color.a;*/
@@ -201,7 +241,7 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
         polygon.vertices.resize(type);
         for (std::uint16_t i = 0; i < type; i++)
         {
-            packet >> polygon.vertices[i].position.x >> polygon.vertices[i].position.y;
+            packet >> polygon.vertices[i].position;
             polygon.vertices[i].color = sf::Color::White; // There's only one color in this game
             /*>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
             >> polygon.vertices[i].color.b >> polygon.vertices[i].color.a;*/

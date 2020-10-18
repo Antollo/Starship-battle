@@ -41,12 +41,11 @@ public:
         sf::UdpSocket udpSocket;
         std::chrono::high_resolution_clock::time_point now, last = std::chrono::high_resolution_clock::now();
         float delta = 0.f;
-        sf::Clock clock1, clockFps, clock2Fps;
-        float fps = 100.f;
+        sf::Clock clock1, clockAimCoords;
         sf::Socket::Status socketStatus;
-        std::atomic<bool> running = true, mainWantsToEnter = false;
-        std::condition_variable cv;
-        std::future<void> receivingThread;
+        std::atomic<bool> running = true, mainWantsToEnter = false, drawingWantsToEnter = false, logicFrameDone = false;
+        std::condition_variable mainCv, drawingCv;
+        std::future<void> receivingThread, drawingThread;
         Console console; //This thing displaying text ui
         console
             << L"Spaceship commander command prompt\n"
@@ -67,15 +66,15 @@ public:
         bool downEventDirectDrawReceived = false;
         int alive = 0;
         decltype(Object::objects)::iterator i, j;
-        constexpr float recommendedDelta = 1.f / 80.f;
+        constexpr float aimCoordsSignalInterval = 1.f / 80.f;
         float ping = 0.f, mouseScrollMultiplier = 1.f, temp;
         int antialiasingLevel = 16;
         bool gridVisible = true;
         Vec2f scale;
         std::vector<UpEvent> upEvents;
-        std::mutex clientMutex;
+        std::mutex receivingMutex, drawingMutex;
         std::vector<DownEvent> downEventsBuffer;
-        sf::RenderWindow window; //Graphic window
+        sf::RenderWindow window;
         sf::Image icon;
         sf::Clock pingClock;
 
@@ -115,7 +114,7 @@ public:
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
 
-        receivingThread = std::async(std::launch::async, [&client, &running, &clientMutex, &downEventsBuffer, &socketStatus, &cv, &mainWantsToEnter]() {
+        receivingThread = std::async(std::launch::async, [&client, &running, &receivingMutex, &downEventsBuffer, &socketStatus, &mainCv, &mainWantsToEnter]() {
             resourceManager::getSoundBuffer("ricochet.ogg");
             resourceManager::getSoundBuffer("explosion.wav");
             sf::Packet packet;
@@ -124,9 +123,9 @@ public:
             {
                 if (client.wait())
                 {
-                    std::unique_lock<std::mutex> lk(clientMutex);
+                    std::unique_lock<std::mutex> lk(receivingMutex);
                     while (mainWantsToEnter)
-                        cv.wait(lk);
+                        mainCv.wait(lk);
                     while ((socketStatus = client.receive(packet)) == sf::Socket::Status::Done)
                     {
                         packet >> downEvent;
@@ -140,17 +139,111 @@ public:
 
         icon.loadFromFile("icon.png");
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
-        window.setVerticalSyncEnabled(false);
+        window.setVerticalSyncEnabled(true);
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setView({{0.f, 0.f}, window.getView().getSize()});
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
         window.setKeyRepeatEnabled(false);
 
-        const float lineWidth = resourceManager::getJSON("config")["lineWidth"].get<float>();
-        glLineWidth(lineWidth);
-        glPointSize(lineWidth);
+        float lineWidth = resourceManager::getJSON("config")["lineWidth"].get<float>();
+        {
+            // Intel drivers draws thinner lines compared to Nvidia drivers
+            // (at least on my machines)
+            std::string vendor(reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
+            std::transform(vendor.begin(), vendor.end(), vendor.begin(), [](char c) { return std::toupper(c, std::locale()); });
+            if (vendor.find("INTEL") != std::string::npos)
+                lineWidth *= 1.3f;
+        }
         glEnable(GL_POINT_SMOOTH);
+        glEnable(GL_LINE_SMOOTH);
+        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+        glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glLineWidth(lineWidth);
+        glPointSize(lineWidth * 1.2f);
+
+        window.setActive(false);
+        sf::err().rdbuf(NULL);
+
+        drawingThread = std::async(std::launch::async, [&running, &drawingMutex, &drawingCv, &drawingWantsToEnter,
+                                                        &window, &cursor, &downEventDirectDraw, &console, &scale,
+                                                        &text, &alive, &gridVisible, &particleSystem, &lineWidth,
+                                                        &grid, &ping, &logicFrameDone]() {
+            window.setActive(true);
+            sf::Clock clockFps;
+            float fps = 100.f;
+            float delta;
+
+            while (running)
+            {
+                {
+                    drawingWantsToEnter = true;
+                    std::lock_guard<std::mutex> lk(drawingMutex);
+
+                    logicFrameDone = false;
+
+                    delta = clockFps.getElapsedTime().asSeconds();
+                    clockFps.restart();
+                    fps = (19.f * fps + 1.f / delta) / 20.f;
+
+                    window.clear(sf::Color::Black);
+
+                    for (const auto &player : downEventDirectDraw.players)
+                    {
+                        if (player.id == Object::thisPlayerId)
+                        {
+                            window.setView({player.position, window.getView().getSize()});
+                            cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
+                            scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
+                        }
+                    }
+
+                    if (!alive)
+                    {
+                        cursor.setState();
+                        scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
+                    }
+
+                    window.draw(particleSystem);
+
+                    if (gridVisible)
+                    {
+                        glLineWidth(lineWidth - 0.5f);
+                        window.draw(grid);
+                        glLineWidth(lineWidth);
+                    }
+
+                    for (const auto &polygon : downEventDirectDraw.polygons)
+                        window.draw(polygon);
+
+                    for (const auto &player : downEventDirectDraw.players)
+                    {
+                        if (player.id == Object::thisPlayerId)
+                            text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp) + L"\nSpeed: " + std::to_wstring((int)std::roundf(player.linearVelocity.getLength())));
+                        else
+                            text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
+                        text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
+                        text.setScale(scale);
+                        window.draw(text);
+                    }
+
+                    text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
+                    text.setScale(scale);
+                    text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
+
+                    window.draw(text);
+                    window.draw(cursor);
+                    window.draw(console);
+
+                    drawingWantsToEnter = false;
+                }
+                drawingCv.notify_one();
+
+                window.display();
+            }
+        });
 
         std::cout << std::flush;
         std::cerr << std::flush;
@@ -160,6 +253,12 @@ public:
 
         while (window.isOpen())
         {
+            std::unique_lock<std::mutex> lk(drawingMutex);
+            while (drawingWantsToEnter && logicFrameDone)
+                drawingCv.wait(lk);
+
+            logicFrameDone = true;
+
             now = std::chrono::high_resolution_clock::now();
             delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
             last = now;
@@ -167,22 +266,32 @@ public:
             while (window.pollEvent(event))
             {
                 //Local events
-                if (event.type == sf::Event::Closed)
-                    window.close();
-                if (event.type == sf::Event::KeyPressed)
+                switch (event.type)
                 {
-                    if (event.key.code == sf::Keyboard::Escape)
+                case sf::Event::Closed:
+                    window.close();
+                    break;
+                case sf::Event::KeyPressed:
+                    switch (event.key.code)
+                    {
+                    case sf::Keyboard::Escape:
                         window.close();
-                    else if (event.key.code == sf::Keyboard::Up)
+                        break;
+                    case sf::Keyboard::Up:
                         console.put(L']');
-                    else if (event.key.code == sf::Keyboard::Down)
+                        break;
+                    case sf::Keyboard::Down:
                         console.put(L'[');
-                }
-                if (event.type == sf::Event::TextEntered)
+                        break;
+                    }
+                    break;
+                case sf::Event::TextEntered:
                     console.put((wchar_t)event.text.unicode);
-                if (event.type == sf::Event::Resized)
+                    break;
+                case sf::Event::Resized:
                     window.setView(sf::View(sf::FloatRect(0.f, 0.f, (float)event.size.width, (float)event.size.height)));
-                if (event.type == sf::Event::MouseWheelScrolled)
+                    break;
+                case sf::Event::MouseWheelScrolled:
                 {
                     sf::View view = window.getView();
 
@@ -192,11 +301,17 @@ public:
                         break;
                     view.zoom((event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f) * 1.1f + (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0) * 0.9f);
                     window.setView(view);
+                    break;
                 }
+                }
+
                 //Player control events
                 if (Object::thisPlayerId != -1)
                 {
-                    if (event.type == sf::Event::KeyPressed || event.type == sf::Event::KeyReleased)
+                    switch (event.type)
+                    {
+                    case sf::Event::KeyPressed:
+                    case sf::Event::KeyReleased:
                     {
                         bool ev = event.type == sf::Event::KeyPressed;
                         switch (event.key.code)
@@ -213,16 +328,13 @@ public:
                         default:
                             break;
                         }
+                        break;
                     }
-                    if (event.type == sf::Event::MouseButtonPressed || event.type == sf::Event::MouseButtonReleased)
-                    {
-                        bool ev = event.type == sf::Event::MouseButtonPressed;
-                        switch (event.mouseButton.button)
-                        {
-                        case sf::Mouse::Button::Left:
-                            upEvents.emplace_back(UpEvent::Type::Shoot, Object::thisPlayerId, ev);
-                            break;
-                        }
+                    case sf::Event::MouseButtonPressed:
+                    case sf::Event::MouseButtonReleased:
+                        if (event.mouseButton.button == sf::Mouse::Button::Left)
+                            upEvents.emplace_back(UpEvent::Type::Shoot, Object::thisPlayerId, event.type == sf::Event::MouseButtonPressed);
+                        break;
                     }
                 }
             }
@@ -243,15 +355,24 @@ public:
                     upEvents.emplace_back(UpEvent::Type::Command, command);
             }
 
-            if (Object::thisPlayerId != -1 && clock2Fps.getElapsedTime().asSeconds() >= recommendedDelta * 1.5f)
+            if (Object::thisPlayerId != -1 && clockAimCoords.getElapsedTime().asSeconds() >= aimCoordsSignalInterval)
             {
-                clock2Fps.restart();
+                clockAimCoords.restart();
                 upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
+
+                for (const auto &player : downEventDirectDraw.players)
+                    if (player.id == Object::thisPlayerId)
+                        alive = 100;
+
+                if (!alive)
+                    Object::thisPlayerId = -1;
+                else
+                    alive--;
             }
 
             {
                 mainWantsToEnter = true;
-                std::lock_guard<std::mutex> lk(clientMutex);
+                std::lock_guard<std::mutex> lk(receivingMutex);
                 for (const auto &upEvent : upEvents)
                 {
                     packet.clear();
@@ -279,7 +400,7 @@ public:
                 }
                 mainWantsToEnter = false;
             }
-            cv.notify_one();
+            mainCv.notify_one();
             upEvents.clear();
 
             for (auto &el : downEvents)
@@ -327,7 +448,7 @@ public:
                 }
                 break;
                 case DownEvent::Type::Pong:
-                    ping = (49.f * ping + pingClock.getElapsedTime().asSeconds()) / 50.f;
+                    ping = (19.f * ping + pingClock.getElapsedTime().asSeconds()) / 20.f;
                     pingClock.restart();
                     upEvents.emplace_back(UpEvent::Type::Ping);
                     break;
@@ -350,61 +471,19 @@ public:
                 for (auto &player : downEventDirectDraw.players)
                     player.position += player.linearVelocity * halfPing;
             }
+            else
+            {
+                for (auto &polygon : downEventDirectDraw.polygons)
+                {
+                    polygon.states.transform.rotate(polygon.angularVelocity * delta, polygon.position).translate(polygon.linearVelocity * delta);
+                    polygon.position += polygon.linearVelocity * delta;
+                }
+
+                for (auto &player : downEventDirectDraw.players)
+                    player.position += player.linearVelocity * delta;
+            }
 
             particleSystem.update(delta);
-
-            if ((temp = clockFps.getElapsedTime().asSeconds()) >= recommendedDelta)
-            {
-                clockFps.restart();
-                fps = (49.f * fps + 1.f / temp) / 50.f;
-                
-                window.clear(sf::Color::Black);
-
-                for (const auto &player : downEventDirectDraw.players)
-                {
-                    if (player.id == Object::thisPlayerId)
-                    {
-                        alive = 100;
-                        window.setView({player.position, window.getView().getSize()});
-                        cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
-                        scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
-                        text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp) + L"\nSpeed: " + std::to_wstring((int)std::roundf(player.linearVelocity.getLength())));
-                    }
-                    else
-                        text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
-                    text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
-                    text.setScale(scale);
-                    window.draw(text);
-                }
-                if (!alive)
-                {
-                    Object::thisPlayerId = -1;
-                    cursor.setState();
-                    scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
-                }
-                else
-                    alive--;
-
-                for (const auto &polygon : downEventDirectDraw.polygons)
-                    window.draw(polygon.vertices, polygon.states);
-
-                text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) 
-                    + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
-                text.setScale(scale);
-                text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
-
-                window.draw(text);
-                window.draw(cursor);
-                window.draw(particleSystem);
-                window.draw(console);
-                if (gridVisible)
-                {
-                    glLineWidth(lineWidth * 0.6f);
-                    window.draw(grid);
-                    glLineWidth(lineWidth);
-                }
-                window.display();
-            }
 
             if (clock1.getElapsedTime().asSeconds() >= 1.f)
             {
@@ -419,11 +498,13 @@ public:
                 std::cerr << std::flush;
             }
         }
-        mainWantsToEnter = false;
         running = false;
-        cv.notify_one();
+        mainWantsToEnter = false;
+        mainCv.notify_one();
         if (receivingThread.valid())
             receivingThread.get();
+        if (drawingThread.valid())
+            drawingThread.get();
         Object::objects.clear();
         return 0;
     }

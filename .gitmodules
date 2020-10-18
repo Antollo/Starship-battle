@@ -17,6 +17,3 @@
 [submodule "thirdparty/Box2D-MT/Box2D-MT"]
 	path = thirdparty/Box2D-MT/Box2D-MT
 	url = https://github.com/jhoffman0x/Box2D-MT
-[submodule "thirdparty/glm/glm"]
-	path = thirdparty/glm/glm
-	url = https://github.com/g-truc/glm
