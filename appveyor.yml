@@ -1,6 +1,6 @@
 version: 0.1.{build}
 image:
-    - Visual Studio 2019
+    - Visual Studio 2017
     - Ubuntu
 init:
     - sh: sudo apt update
@@ -8,8 +8,7 @@ init:
     - sh: sudo apt-get install -y libgl1-mesa-dev udev libudev-dev libopenal-dev libflac-dev libvorbis-dev libxrandr-dev libfreetype6-dev
 before_build:
     - git submodule update --init --recursive
-    - ps: cmake . -A Win32
-    - sh: cmake .
+    - cmake .
 build_script:
     - cmake --build . --config Release
 after_build:
