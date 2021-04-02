@@ -93,7 +93,7 @@ public:
 
         Rock::create(polygon, body);
     }
-    void process() override
+    void process(float delta) override
     {
         body->GetMassData(&massData);
         setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);
@@ -106,7 +106,7 @@ public:
             onLeft();
         if (right)
             onRight();
-        onAim();
+        onAim(delta);
         if (shoot)
             onShoot();
         if (hp < 0.f)
@@ -148,13 +148,38 @@ private:
     {
         body->ApplyTorque(torque, true);
     }
-    void onAim() noexcept
+    inline float piPi(float x){
+        x = std::fmod(x + pi, 2 * pi);
+        if (x < 0)
+            x += 2 * pi;
+        return x - pi;
+    }
+    void onAim(float delta) noexcept
     {
         sf::Vector2f targetRelativeToTurret;
+        aimState = false;
         for (Turret &turret : turrets)
         {
             targetRelativeToTurret = getInverseTransform().transformPoint(aimCoords) - turret.getPosition();
-            aimState = turret.setRotation(std::atan2(targetRelativeToTurret.y, targetRelativeToTurret.x) * 180.f / pi);
+            
+            float dest = std::atan2(targetRelativeToTurret.y, targetRelativeToTurret.x);
+            aimState |= turret.setRotation(dest * 180.f / pi, delta);
+
+            /*float y = piPi(turret.getRotation() * pi / 180.f);
+            
+            float x = piPi(dest);
+            float d = piPi(x - y);
+
+
+            if (std::abs(d) < 0.1)
+                 aimState |= turret.setRotation(dest * 180.f / pi);
+            else
+            {
+                if (d > 0)
+                    aimState |= turret.setRotation((y +  delta * 6.f) * 180.f / pi);
+                else
+                    aimState |= turret.setRotation((y -  delta * 6.f) * 180.f / pi);
+            }*/
         }
     }
     virtual void onShoot() noexcept

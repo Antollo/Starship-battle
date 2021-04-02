@@ -33,7 +33,7 @@ public:
     {
         world.DestroyBody(body);
     }
-    void process() override
+    void process(float delta) override
     {
         body->GetMassData(&massData);
         setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);
@@ -78,7 +78,7 @@ private:
         polygon[points.size()] = polygon[0];
 
         body->SetLinearVelocity(velocity);
-        process();
+        process(0);
     }
     ObjectId getId() override { return -body->GetFixtureList()[0].GetFilterData().groupIndex; }
     b2Body* body;

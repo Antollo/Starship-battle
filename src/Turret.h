@@ -36,12 +36,26 @@ public:
 
         rng.param(std::normal_distribution<float>::param_type(0, accuracy / 1.3f));
     }
-    bool setRotation(const float& angle)
+    bool setRotation(float dest, float delta)
     {
-        sf::Transformable::setRotation(std::min(std::max(angle, - maxAngle), maxAngle));
-        return angle > - maxAngle && angle < maxAngle;
+        dest = piPi(dest);
+        float last = piPi(getRotation());
+        float diff = piPi(dest - last);
+
+        if (std::abs(diff) > 0.1f)
+        {
+            if (maxAngle < 180.f)
+                diff = dest - last;
+
+            if (diff > 0)
+                dest = last + delta * 360.f;
+            else
+                dest = last - delta * 360.f;
+        }
+        sf::Transformable::setRotation(std::min(std::max(dest, - maxAngle), maxAngle));
+        return dest > - maxAngle && dest < maxAngle;
     }
-    void shoot(const sf::Transform& transform, const float& angle, const Vec2f& velocity, const int& index)
+    void shoot(const sf::Transform& transform, const float& angle, const Vec2f& velocity, int index)
     {
         float rotatedAngle = angle + getRotation() / 180.f * pi + rng(Object::mt);
         Bullet::create(bulletShape, Vec2f::asVec2f(transform.transformPoint(getPosition()) / Object::worldScale), rotatedAngle, penetration, damage, {cosf(rotatedAngle) * bulletVelocity + velocity.x, sinf(rotatedAngle) * bulletVelocity + velocity.y}, index);
@@ -56,6 +70,12 @@ private:
     {
         states.transform *= getTransform();
         target.draw(polygon, states, position, linearVelocity, angularVelocity);
+    }
+    inline float piPi(float x){
+        x = std::fmod(x + 180.f, 360.f);
+        if (x < 0)
+            x += 360.f;
+        return x - 180.f;
     }
     sf::VertexArray polygon;
     std::vector<Vec2f> bulletShape;

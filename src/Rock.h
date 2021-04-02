@@ -45,7 +45,7 @@ public:
     {
         world.DestroyBody(body);
     }
-    void process() override
+    void process(float delta) override
     {
         body->GetMassData(&massData);
         setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);

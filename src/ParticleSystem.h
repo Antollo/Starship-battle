@@ -6,7 +6,7 @@
 class ParticleSystem : public sf::Transformable, public sf::Drawable
 {
 public:
-    ParticleSystem(unsigned int count = 10000) :
+    ParticleSystem(unsigned int count = 20000) :
     m_particles(count),
     m_vertices(count),
     m_emitter(0.f, 0.f)
@@ -37,7 +37,7 @@ public:
                 resetParticle(i);
                 j++;
             }
-            if (j >= 300) break;
+            if (j >= 600) break;
         }
     }
     /*const TypeId getTypeId() const noexcept override

@@ -34,7 +34,7 @@ public:
         textOutput.setFillColor(sf::Color::White);
         textInput.setFillColor(sf::Color::White);
         notificationOutput.setFillColor(sf::Color::White);
-        textInput.setString(">_");
+        textInput.setString(prompt + cursor);
         correctOrigin();
         /*wcinFuture = std::async(std::launch::async, []()
         {
@@ -115,22 +115,23 @@ public:
     }
     void put(wchar_t c)
     {
+        const sf::String& string = textInput.getString();
         switch (c)
         {
             case L'\n':
             case L'\r':
                 if (!active) break;
-                entered.push(textInput.getString().substring(1, textInput.getString().getSize() - 2));
+                entered.push(string.substring(2, string.getSize() - 3));
                 history.insert(history.begin() + 1, entered.back());
                 textOutput.setString(textOutput.getString() + entered.back() + '\n');
                 //std::wcout << (entered.back() + L"\n");
-                textInput.setString(L">_");
+                textInput.setString(prompt + cursor);
                 correctOrigin();
                 break;
             case L'\b':
                 if (!active) break;
-                if (textInput.getString().getSize() > 2)
-                    textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 2) + '_');
+                if (string.getSize() > 3)
+                    textInput.setString(string.substring(0, string.getSize() - 2) + cursor);
                 break;
             case L'`':
             case L'~':
@@ -140,38 +141,58 @@ public:
                 //Autocomplete
                 if (!active) break;
                 it = std::find_if(history.begin(), history.end(),
-                [key = textInput.getString().substring(1, textInput.getString().getSize() - 2)](const std::wstring& str) {
+                [key = string.substring(2, string.getSize() - 3)](const std::wstring& str) {
                     return str.find(key) == 0;
                 });
                 if (it != history.end())
-                    textInput.setString(L">"s + *it + L"_"s);
+                    textInput.setString(prompt + *it + cursor);
                 break;
             case L']':
                 if (!active) break;
                 historyIterator++;
                 historyIterator %= history.size();
-                textInput.setString(L">"s + history[historyIterator] + L"_"s);
+                textInput.setString(prompt + history[historyIterator] + cursor);
                 break;
             case L'[':
                 if (!active) break;
                 if (historyIterator) historyIterator--;
-                textInput.setString(L">"s + history[historyIterator] + L"_"s);
+                textInput.setString(prompt + history[historyIterator] + cursor);
                 break;
             default:
                 if (!active) break;
-                textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 1) + c + '_');
+                if (string.getSize() > 32 && string[string.getSize() - 2] == string[string.getSize() - 3] && string[string.getSize() - 3] == string[string.getSize() - 4] && string.find(" ", 2) == sf::String::InvalidPos)
+                {
+                    active = false;
+                    textInput.setString(prompt + cursor);
+                    break;
+                }
+                textInput.setString(string.substring(0, string.getSize() - 1) + c + cursor);
                 break;
         }
     }
+    void update(float elapsed)
+    {
+        time += elapsed;
+        if (time > 0.6f)
+        {
+            time = 0.f;
+            if (blink)
+                textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 1) + ' ');
+            else
+                textInput.setString(textInput.getString().substring(0, textInput.getString().getSize() - 1) + cursor);
+            blink = !blink;
+        }
+    }
+    bool isActive() const {return active; }
 private:
     void draw(sf::RenderTarget& target, sf::RenderStates states) const noexcept override
     {
         static sf::View temp;
-        static sf::Vector2f pos(18.f, 0.f);
+        static sf::Vector2f pos(24.f, 0.f);
 
         temp = target.getView();
         target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
-        pos.y = -18 + target.getView().getSize().y;
+        pos.y = -24 + target.getView().getSize().y;
         if (!active) 
         {
             notificationOutput.setPosition(pos);
@@ -202,7 +223,11 @@ private:
     std::deque<std::wstring>::iterator it;
     std::size_t historyIterator;
     //std::future<std::wstring> wcinFuture;
+    static inline const sf::String cursor = sf::String((sf::Uint32)9608);
+    static inline const sf::String prompt = sf::String("$ ");
     bool active;
+    float time = 0.f;
+    bool blink = false;
 };
 
 #endif

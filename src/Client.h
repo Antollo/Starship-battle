@@ -28,6 +28,9 @@
 #include "protector.h"
 #include "RankedBattle.h"
 
+#define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
+#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+
 class GameClient
 {
 private:
@@ -67,14 +70,15 @@ public:
         int alive = 0;
         decltype(Object::objects)::iterator i, j;
         constexpr float aimCoordsSignalInterval = 1.f / 80.f;
-        float ping = 0.f, mouseScrollMultiplier = 1.f, temp;
+        float ping = 0.f, mouseScrollMultiplier = 1.f;
         int antialiasingLevel = 16;
         bool gridVisible = true;
         Vec2f scale;
         std::vector<UpEvent> upEvents;
-        std::mutex receivingMutex, drawingMutex;
+        std::mutex receivingMutex, drawingMutex, renderTextureMutex;
         std::vector<DownEvent> downEventsBuffer;
         sf::RenderWindow window;
+        sf::RenderTexture renderTexture, renderTexture2;
         sf::Image icon;
         sf::Clock pingClock;
 
@@ -142,7 +146,6 @@ public:
         window.setVerticalSyncEnabled(true);
         window.setMouseCursorVisible(false);
         window.requestFocus();
-        window.setView({{0.f, 0.f}, window.getView().getSize()});
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
         window.setKeyRepeatEnabled(false);
 
@@ -165,16 +168,39 @@ public:
         glPointSize(lineWidth * 1.2f);
 
         window.setActive(false);
-        sf::err().rdbuf(NULL);
+        //sf::err().rdbuf(NULL);
 
         drawingThread = std::async(std::launch::async, [&running, &drawingMutex, &drawingCv, &drawingWantsToEnter,
                                                         &window, &cursor, &downEventDirectDraw, &console, &scale,
                                                         &text, &alive, &gridVisible, &particleSystem, &lineWidth,
-                                                        &grid, &ping, &logicFrameDone]() {
+                                                        &grid, &ping, &logicFrameDone, &renderTexture, 
+                                                        &renderTexture2, &renderTextureMutex]() {
             window.setActive(true);
+            sf::Shader consoleShader, crtShader, blurShader;
+            renderTexture.create(window.getSize().x, window.getSize().y, window.getSettings());
+            renderTexture.setSmooth(true);
+            renderTexture.setView({{0.f, 0.f}, window.getView().getSize()});
+
+            renderTexture2.create(renderTexture.getSize().x, renderTexture.getSize().y, window.getSettings());
+            renderTexture2.setSmooth(true);
+            renderTexture2.setView(renderTexture.getView());
+
+            sf::Sprite renderTextureSprite(renderTexture.getTexture());
+
+            if (!consoleShader.loadFromFile("console.vert", "console.frag"))
+                std::cerr << "Console shader not loaded" << std::endl;
+
+            if (!crtShader.loadFromFile("crt.frag", sf::Shader::Fragment))
+                std::cerr << "Crt shader not loaded" << std::endl;
+
+            if (!blurShader.loadFromFile("blur.frag", sf::Shader::Fragment))
+                std::cerr << "Blur shader not loaded" << std::endl;
+
             sf::Clock clockFps;
             float fps = 100.f;
             float delta;
+
+            renderTexture.clear(sf::Color::White);
 
             while (running)
             {
@@ -188,35 +214,42 @@ public:
                     clockFps.restart();
                     fps = (19.f * fps + 1.f / delta) / 20.f;
 
-                    window.clear(sf::Color::Black);
+                    window.clear(sf::Color::Magenta);
+                    renderTexture.clear(sf::Color::Black);
+                    //renderTexture.clear(sf::Color::Black);
+
+                    //static sf::View temp;
+                    //temp = target.getView();
+                    //target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
 
                     for (const auto &player : downEventDirectDraw.players)
                     {
                         if (player.id == Object::thisPlayerId)
                         {
-                            window.setView({player.position, window.getView().getSize()});
+                            renderTexture.setView({player.position, renderTexture.getView().getSize()});
                             cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
-                            scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
+                            scale = {renderTexture.getView().getSize().x / (float)renderTexture.getSize().x, renderTexture.getView().getSize().y / (float)renderTexture.getSize().y};
+                            break;
                         }
                     }
 
                     if (!alive)
                     {
                         cursor.setState();
-                        scale = {window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y};
+                        scale = {renderTexture.getView().getSize().x / (float)renderTexture.getSize().x, renderTexture.getView().getSize().y / (float)renderTexture.getSize().y};
                     }
-
-                    window.draw(particleSystem);
+    
+                    renderTexture.draw(particleSystem);
 
                     if (gridVisible)
                     {
-                        glLineWidth(lineWidth - 0.5f);
-                        window.draw(grid);
+                        glLineWidth(lineWidth - 0.2f);
+                        renderTexture.draw(grid);
                         glLineWidth(lineWidth);
                     }
 
                     for (const auto &polygon : downEventDirectDraw.polygons)
-                        window.draw(polygon);
+                        renderTexture.draw(polygon);
 
                     for (const auto &player : downEventDirectDraw.players)
                     {
@@ -226,21 +259,45 @@ public:
                             text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
                         text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
                         text.setScale(scale);
-                        window.draw(text);
+                        renderTexture.draw(text);
                     }
 
                     text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
                     text.setScale(scale);
-                    text.setPosition(window.mapPixelToCoords({(int)window.getSize().x - 100, 18}));
+                    text.setPosition(renderTexture.mapPixelToCoords({(int)renderTexture.getSize().x - 106, 24}));
 
-                    window.draw(text);
-                    window.draw(cursor);
-                    window.draw(console);
+                    renderTexture.draw(text);
+                    cursor.update(window);
+                    renderTexture.draw(cursor);
+
+                    consoleShader.setParameter("tex", sf::Shader::CurrentTexture);
+                    renderTexture.draw(console, &consoleShader);
 
                     drawingWantsToEnter = false;
                 }
                 drawingCv.notify_one();
 
+                {
+                    std::lock_guard<std::mutex> lk(renderTextureMutex);
+                    renderTexture.display();
+                    renderTexture2.clear(sf::Color::Black);
+                    renderTextureSprite.setTexture(renderTexture.getTexture());
+                    renderTextureSprite.setScale(scale);
+                    renderTextureSprite.setPosition(renderTexture2.mapPixelToCoords({0, 0}));
+                    blurShader.setUniform("tex", sf::Shader::CurrentTexture);
+                    blurShader.setUniform("dir", sf::Vector2f(1.f, 0.f));
+                    renderTexture2.draw(renderTextureSprite, &blurShader);
+                    renderTexture2.display();
+                    blurShader.setUniform("tex", sf::Shader::CurrentTexture);
+                    blurShader.setUniform("dir", sf::Vector2f(0.f, 1.f));
+                    renderTextureSprite.setTexture(renderTexture2.getTexture());
+                    renderTextureSprite.setPosition(renderTexture.mapPixelToCoords({0, 0}));
+                    renderTexture.draw(renderTextureSprite, &blurShader);
+                    renderTexture.display();
+                }
+
+                crtShader.setParameter("tex", sf::Shader::CurrentTexture);
+                window.draw(sf::Sprite(renderTexture.getTexture()), &crtShader);
                 window.display();
             }
         });
@@ -289,18 +346,31 @@ public:
                     console.put((wchar_t)event.text.unicode);
                     break;
                 case sf::Event::Resized:
+                {
+                    std::lock_guard<std::mutex> lk(renderTextureMutex);
+                    renderTexture.create(window.getSize().x, window.getSize().y, window.getSettings());
+                    renderTexture.setSmooth(true);
+                    renderTexture.setView(sf::View(sf::FloatRect(0.f, 0.f, (float)event.size.width, (float)event.size.height)));
+
+                    renderTexture2.create(renderTexture.getSize().x, renderTexture.getSize().y, window.getSettings());
+                    renderTexture2.setSmooth(true);
+                    renderTexture2.setView(renderTexture.getView());
+
                     window.setView(sf::View(sf::FloatRect(0.f, 0.f, (float)event.size.width, (float)event.size.height)));
                     break;
+                }
                 case sf::Event::MouseWheelScrolled:
                 {
-                    sf::View view = window.getView();
+                    std::lock_guard<std::mutex> lk(renderTextureMutex);
+                    sf::View view = renderTexture.getView();
 
-                    if (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y < 0.1f)
+                    if (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0.f && view.getSize().x / (float)renderTexture.getSize().x + view.getSize().y / (float)renderTexture.getSize().y < 0.1f)
                         break;
-                    if (event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f && view.getSize().x / (float)window.getSize().x + view.getSize().y / (float)window.getSize().y > 48.f)
+                    if (event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f && view.getSize().x / (float)renderTexture.getSize().x + view.getSize().y / (float)renderTexture.getSize().y > 48.f)
                         break;
                     view.zoom((event.mouseWheelScroll.delta * mouseScrollMultiplier > 0.f) * 1.1f + (event.mouseWheelScroll.delta * mouseScrollMultiplier < 0) * 0.9f);
-                    window.setView(view);
+                    renderTexture.setView(view);
+                    renderTexture2.setView(view);
                     break;
                 }
                 }
@@ -358,7 +428,7 @@ public:
             if (Object::thisPlayerId != -1 && clockAimCoords.getElapsedTime().asSeconds() >= aimCoordsSignalInterval)
             {
                 clockAimCoords.restart();
-                upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(window.mapPixelToCoords(sf::Mouse::getPosition(window))));
+                upEvents.emplace_back(UpEvent::Type::AimCoords, Object::thisPlayerId, Vec2f::asVec2f(renderTexture.mapPixelToCoords(sf::Mouse::getPosition(window))));
 
                 for (const auto &player : downEventDirectDraw.players)
                     if (player.id == Object::thisPlayerId)
@@ -403,9 +473,8 @@ public:
             mainCv.notify_one();
             upEvents.clear();
 
-            for (auto &el : downEvents)
+            for (DownEvent &downEvent : downEvents)
             {
-                DownEvent &downEvent = el;
                 switch (downEvent.type)
                 {
                 case DownEvent::Type::DirectDraw:
@@ -484,6 +553,8 @@ public:
             }
 
             particleSystem.update(delta);
+            console.update(delta);
+            window.setKeyRepeatEnabled(console.isActive());
 
             if (clock1.getElapsedTime().asSeconds() >= 1.f)
             {

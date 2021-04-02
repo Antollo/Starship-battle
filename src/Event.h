@@ -129,7 +129,7 @@ public:
         float angularVelocity;
 
     private:
-        static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 160);
+        static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 200);
         virtual void draw(sf::RenderTarget &target, sf::RenderStates _) const
         {
             if (vertices.getPrimitiveType() == sf::LineStrip)
@@ -201,9 +201,9 @@ inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
         packet << matrix[0] << matrix[4] << matrix[12]
                << matrix[1] << matrix[5] << matrix[13]
                << matrix[3] << matrix[7] << matrix[15];*/
-        packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount());
+        packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount() - 1);
         packet << polygon.position << polygon.linearVelocity << polygon.angularVelocity;
-        for (size_t i = 0; i < polygon.vertices.getVertexCount(); i++)
+        for (size_t i = 0; i < polygon.vertices.getVertexCount() - 1; i++)
         {
             position = polygon.states.transform.transformPoint(polygon.vertices[i].position);
             packet << position;
@@ -238,7 +238,7 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
         polygon.vertices.setPrimitiveType(static_cast<sf::PrimitiveType>(type));
         packet >> type; // Actually size, but uint8_t
         packet >> polygon.position >> polygon.linearVelocity >> polygon.angularVelocity;
-        polygon.vertices.resize(type);
+        polygon.vertices.resize(type + 1);
         for (std::uint16_t i = 0; i < type; i++)
         {
             packet >> polygon.vertices[i].position;
@@ -246,6 +246,7 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
             /*>> polygon.vertices[i].color.r >> polygon.vertices[i].color.g
             >> polygon.vertices[i].color.b >> polygon.vertices[i].color.a;*/
         }
+        polygon.vertices[type] = polygon.vertices[0];
     }
     packet >> size;
     ev.players.resize(size);

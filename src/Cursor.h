@@ -76,30 +76,35 @@ public:
             hpState = L""s;
     }
 
+    void update(const sf::RenderWindow &window)
+    {
+        //hack.setScale(window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y);
+        sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+        setPosition(mousePos);
+        text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)));
+
+        size_t reloaded = (size_t)std::min(reloadState * 32.f, 32.f);
+        for (size_t i = 0; i < reloaded; i++)
+            dots[i].color = sf::Color::White;
+
+        for (size_t i = reloaded; i < 32; i++)
+            dots[i].color = sf::Color::Transparent;
+    }
+
 private:
     void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
     {
-        Cursor &hack = const_cast<Cursor &>(*this);
-        hack.setScale(target.getView().getSize().x / (float)target.getSize().x, target.getView().getSize().y / (float)target.getSize().y);
-        sf::Vector2f mousePos = target.mapPixelToCoords(sf::Mouse::getPosition(*dynamic_cast<sf::RenderWindow *>(&target)));
-        hack.setPosition(mousePos);
-        hack.text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)));
+        static sf::View temp;
+        temp = target.getView();
+        target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
+
         states.transform = getTransform();
         target.draw(text, states);
         target.draw(polygon, states);
         target.draw(circle, states);
-
-        size_t reloaded = (size_t)std::min(reloadState * 32.f, 32.f);
-        for (size_t i = 0; i < reloaded; i++)
-        {
-            hack.dots[i].color = sf::Color::White;
-        }
-        for (size_t i = reloaded; i < 32; i++)
-        {
-            hack.dots[i].color = sf::Color::Transparent;
-        }
-
         target.draw(dots, states);
+
+        target.setView(temp);
     }
     sf::Text text;
     std::wstring hpState;

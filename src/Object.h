@@ -61,7 +61,7 @@ public:
             counter = 1;
     };
     virtual ObjectId getId() { return id; }
-    virtual void process() = 0;
+    virtual void process(float delta) = 0;
     void checkDestroy()
     {
         if (destroy)
@@ -78,10 +78,10 @@ public:
     static constexpr float worldScale = 40.f;
     static constexpr float worldLimits = 12000.f;
     virtual ~Object() {}
-    static void processAll()
+    static void processAll(float delta)
     {
         for (const auto &object : Object::objects)
-            object.second->process();
+            object.second->process(delta);
 
         ObjectsContainer::iterator i, j;
         for (auto i = Object::objects.begin(); i != Object::objects.end();)
@@ -94,7 +94,7 @@ public:
     {
         for (auto &object : Object::objects)
             object.second->destroy = true;
-        processAll();
+        processAll(0);
         if (firstPhase)
             destroyAll(false);
     }

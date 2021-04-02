@@ -206,7 +206,7 @@ public:
             upEventsRespondable.clear();
 
             commandProcessor.processJobs();
-            Object::processAll();
+            Object::processAll(delta);
             Object::world.Step(delta, velocityIterations, positionIterations, executor);
 
             lastActiveCounter = 0;

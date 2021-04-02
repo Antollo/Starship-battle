@@ -20,7 +20,7 @@ public:
     {
         return Object::TypeId::Bot;
     }
-    void process() override
+    void process(float delta) override
     {
         Vec2f newAimCoords{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         for (const auto &targetId : targets)
@@ -79,7 +79,7 @@ public:
             left = false;
             forward = false;
         }
-        Spaceship::process();
+        Spaceship::process(delta);
     }
     void target(const Object::ObjectId &id)
     {

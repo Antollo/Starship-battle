@@ -35,25 +35,47 @@ public:
 
         Rock::create(polygon, body);
     }
-    void process() override
+    void process(float delta) override
     {
         body->GetMassData(&massData);
         setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);
         setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
         setRotation(body->GetAngle() * 180.f / pi);
         setOrigin(0, 0);
+        //joint->SetMotorSpeed(-100.f * (piPi(joint->GetJointAngle())));
+        //std::cout<<piPi(joint->GetJointAngle())<<std::endl;
     }
     void connect(b2Body *shipBody, float x, float y)
     {
         b2WeldJointDef jointDef;
         jointDef.bodyA = shipBody;
         jointDef.bodyB = body;
-        jointDef.localAnchorB.x = x;
-        jointDef.localAnchorB.y = y;
+        jointDef.localAnchorB = body->GetLocalCenter();
+        jointDef.localAnchorB.x += x / 2.f;
+        jointDef.localAnchorB.y += y / 2.f;
+
+        jointDef.localAnchorA = shipBody->GetLocalCenter();
+        jointDef.localAnchorA.x -= x / 2.f;
+        jointDef.localAnchorA.y -= y / 2.f;
+
         jointDef.collideConnected = true;
+        //jointDef.referenceAngle = 1;
+        jointDef.frequencyHz = 8;
+        jointDef.dampingRatio = 0.8;
+
+        //jointDef.enableMotor = true;
+        //jointDef.maxMotorTorque = 100;
+        //jointDef
+        //jointDef.motorSpeed = 100;
         joint = (b2WeldJoint*)world.CreateJoint(&jointDef);
     }
 private:
+    inline float piPi(float x){
+        x = std::fmod(x + pi, 2 * pi);
+        if (x < 0)
+            x += 2 * pi;
+        return x - pi;
+    }
     Shield(std::vector<Vec2f>& points, const int& index)
     {
         b2BodyDef bodyDef;
