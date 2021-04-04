@@ -40,7 +40,7 @@ public:
 
         if (newAimCoords != Vec2f{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()})
         {
-            aimCoords = newAimCoords; //+ Vec2f{worldScale * (rng01(mt) - 0.5f), worldScale * (rng01(mt) - 0.5f)};
+            aimCoords = newAimCoords; //+ Vec2f{worldScale * (uniformRNG<0, 1, 1, 1>() - 0.5f), worldScale * (uniformRNG<0, 1, 1, 1>() - 0.5f)};
             float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
             while (aimAngle > pi)
                 aimAngle -= 2.f * pi;
@@ -104,7 +104,7 @@ private:
     void onShoot() noexcept override
     {
         if (clock.getElapsedTime().asSeconds() > *reloadIt)
-            if (Object::rng01(Object::mt) < 0.3f)
+            if (Object::uniformRNG<0, 1, 1, 1>() < 0.3f)
                 clock.restart();
             else
                 Spaceship::onShoot();

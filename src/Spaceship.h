@@ -46,21 +46,22 @@ public:
     {
         return aimState;
     }
-    const float &getMaxHp()
+    float getMaxHp() const
     {
         return maxHp;
     }
-    const float &getHp()
+    float getHp() const
     {
         return hp;
     }
-    const std::wstring &getPlayerId()
+    const std::wstring &getPlayerId() const
     {
         return playerId;
     }
-    std::vector<std::pair<Vec2f, Vec2f>> getEdges()
+    const std::vector<std::pair<Vec2f, Vec2f>>& getEdges() const
     {
-        std::vector<std::pair<Vec2f, Vec2f>> ret(polygon.getVertexCount() - 1);
+        static std::vector<std::pair<Vec2f, Vec2f>> ret;
+        ret.resize(polygon.getVertexCount() - 1);
         for (std::size_t i = 0; i < polygon.getVertexCount() - 1; i++)
         {
             ret[i].first = Vec2f::asVec2f(getTransform().transformPoint(polygon[i].position) / worldScale);
@@ -70,12 +71,6 @@ public:
     }
     ~Spaceship() override
     {
-        //(*Object::console) << Spaceship::playerId
-        //<< L" was warped to HQ\n";
-        //if (spaceship == this) spaceship = nullptr;
-        //if (getId() == thisPlayerId) thisPlayerId = -1;
-
-        //world.DestroyBody(body);
         body->SetUserData(nullptr);
         decltype(Object::objects)::iterator it, jt;
         for (auto it = Object::objects.begin(); it != Object::objects.end();)
@@ -117,13 +112,6 @@ public:
 
 private:
     Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1));
-    void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-        for (const Turret &turret : turrets)
-            target.draw(turret, states);
-    }
     void draw(RenderSerializerBase &target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
@@ -164,22 +152,6 @@ private:
             
             float dest = std::atan2(targetRelativeToTurret.y, targetRelativeToTurret.x);
             aimState |= turret.setRotation(dest * 180.f / pi, delta);
-
-            /*float y = piPi(turret.getRotation() * pi / 180.f);
-            
-            float x = piPi(dest);
-            float d = piPi(x - y);
-
-
-            if (std::abs(d) < 0.1)
-                 aimState |= turret.setRotation(dest * 180.f / pi);
-            else
-            {
-                if (d > 0)
-                    aimState |= turret.setRotation((y +  delta * 6.f) * 180.f / pi);
-                else
-                    aimState |= turret.setRotation((y -  delta * 6.f) * 180.f / pi);
-            }*/
         }
     }
     virtual void onShoot() noexcept

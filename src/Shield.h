@@ -8,9 +8,9 @@
 class Shield : public Object
 {
 public:
-    static Shield* create(std::vector<Vec2f> points, const int& index)
+    static Shield* create(std::vector<Vec2f> points, int index, b2Vec2 position)
     {
-        return dynamic_cast<Shield*>(objects.emplace(counter, new Shield(points, index)).first->second.get());
+        return dynamic_cast<Shield*>(objects.emplace(counter, new Shield(points, index, position)).first->second.get());
     }
     const Object::TypeId getTypeId() const override
     {
@@ -76,13 +76,14 @@ private:
             x += 2 * pi;
         return x - pi;
     }
-    Shield(std::vector<Vec2f>& points, const int& index)
+    Shield(std::vector<Vec2f>& points, int index, b2Vec2 position)
     {
         b2BodyDef bodyDef;
         bodyDef.type = b2_dynamicBody;
         bodyDef.linearDamping = 0.01f;
         bodyDef.angularDamping = 1.f;
         bodyDef.userData = this;
+        bodyDef.position = position;
 
         body = world.CreateBody(&bodyDef);
 

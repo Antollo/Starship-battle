@@ -3,6 +3,8 @@
 
 #include "Object.h"
 
+class Spaceship;
+
 class Bullet : public Object
 {
 public:
@@ -84,6 +86,7 @@ private:
     b2Body* body;
     b2MassData massData;
     float penetration, damage;
+    Spaceship* lastContact = nullptr;
     friend class ContactListener;
 };
 

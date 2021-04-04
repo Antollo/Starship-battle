@@ -42,7 +42,7 @@ public:
         float last = piPi(getRotation());
         float diff = piPi(dest - last);
 
-        if (std::abs(diff) > 0.1f)
+        if (std::abs(diff) > 10.f)
         {
             if (maxAngle < 180.f)
                 diff = dest - last;

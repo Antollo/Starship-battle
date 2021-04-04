@@ -46,10 +46,10 @@ public:
         float delta = 0.f;
         sf::Clock clock1, clockAimCoords;
         sf::Socket::Status socketStatus;
-        std::atomic<bool> running = true, mainWantsToEnter = false, drawingWantsToEnter = false, logicFrameDone = false;
+        std::atomic<bool> running = true, mainWantsToEnter = false, drawingWantsToEnter = false;
         std::condition_variable mainCv, drawingCv;
         std::future<void> receivingThread, drawingThread;
-        Console console; //This thing displaying text ui
+        Console console;
         console
             << L"Spaceship commander command prompt\n"
             << L"Client, "
@@ -70,8 +70,9 @@ public:
         int alive = 0;
         decltype(Object::objects)::iterator i, j;
         constexpr float aimCoordsSignalInterval = 1.f / 80.f;
-        float ping = 0.f, mouseScrollMultiplier = 1.f;
-        int antialiasingLevel = 16;
+        float ping = 0.f;
+        const float mouseScrollMultiplier = resourceManager::getJSON("config")["mouseScrollMultiplier"].get<float>();
+        const int antialiasingLevel = resourceManager::getJSON("config")["antialiasingLevel"].get<int>();
         bool gridVisible = true;
         Vec2f scale;
         std::vector<UpEvent> upEvents;
@@ -84,6 +85,7 @@ public:
 
         if (socket.connect(args["ip"], port) != sf::Socket::Status::Done)
         {
+            sf::sleep(sf::milliseconds(100));
             if (socket.connect(args["ip"], port) != sf::Socket::Status::Done)
             {
                 std::cerr << "Could not connect with " << args["ip"] << ":" << port << ".\n";
@@ -93,6 +95,7 @@ public:
         }
         if (udpSocket.bind(port + 1) != sf::Socket::Status::Done)
         {
+            sf::sleep(sf::milliseconds(100));
             if (udpSocket.bind(port + 1) != sf::Socket::Status::Done)
             {
                 std::cerr << "Could not bind udp socket to port " << port + 1 << ".\n";
@@ -103,17 +106,12 @@ public:
 
         Client client(socket, udpSocket);
 
-        text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
-        text.setCharacterSize(20);
-        text.setFillColor(sf::Color::White);
+        const auto fontName = resourceManager::getJSON("config")["fontName"].get<std::string>();
+        const auto fontSize = resourceManager::getJSON("config")["fontSize"].get<int>();
 
-        std::ifstream file("config.json");
-        if (file.good())
-        {
-            json jsonObject = json::parse(file);
-            mouseScrollMultiplier = jsonObject["mouseScrollMultiplier"].get<float>();
-            antialiasingLevel = jsonObject["antialiasingLevel"].get<int>();
-        }
+        text.setFont(resourceManager::getFont(fontName));
+        text.setCharacterSize(fontSize);
+        text.setFillColor(sf::Color::White);
 
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
@@ -143,7 +141,7 @@ public:
 
         icon.loadFromFile("icon.png");
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
-        window.setVerticalSyncEnabled(true);
+        window.setVerticalSyncEnabled(resourceManager::getJSON("config")["vSync"].get<bool>());
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
@@ -173,34 +171,35 @@ public:
         drawingThread = std::async(std::launch::async, [&running, &drawingMutex, &drawingCv, &drawingWantsToEnter,
                                                         &window, &cursor, &downEventDirectDraw, &console, &scale,
                                                         &text, &alive, &gridVisible, &particleSystem, &lineWidth,
-                                                        &grid, &ping, &logicFrameDone, &renderTexture, 
+                                                        &grid, &ping, &renderTexture,
                                                         &renderTexture2, &renderTextureMutex]() {
-            window.setActive(true);
+            sf::Sprite renderTextureSprite(renderTexture.getTexture());
             sf::Shader consoleShader, crtShader, blurShader;
+            sf::Clock clockFps;
+            sf::View temp;
+            float fps = 60.f;
+            float delta;
+
+            window.setActive(true);
+
             renderTexture.create(window.getSize().x, window.getSize().y, window.getSettings());
             renderTexture.setSmooth(true);
             renderTexture.setView({{0.f, 0.f}, window.getView().getSize()});
+
+            renderTexture.clear(sf::Color::Green);
 
             renderTexture2.create(renderTexture.getSize().x, renderTexture.getSize().y, window.getSettings());
             renderTexture2.setSmooth(true);
             renderTexture2.setView(renderTexture.getView());
 
-            sf::Sprite renderTextureSprite(renderTexture.getTexture());
-
             if (!consoleShader.loadFromFile("console.vert", "console.frag"))
-                std::cerr << "Console shader not loaded" << std::endl;
+                std::cerr << "Console shader not loaded." << std::endl;
 
             if (!crtShader.loadFromFile("crt.frag", sf::Shader::Fragment))
-                std::cerr << "Crt shader not loaded" << std::endl;
+                std::cerr << "Crt shader not loaded." << std::endl;
 
             if (!blurShader.loadFromFile("blur.frag", sf::Shader::Fragment))
-                std::cerr << "Blur shader not loaded" << std::endl;
-
-            sf::Clock clockFps;
-            float fps = 100.f;
-            float delta;
-
-            renderTexture.clear(sf::Color::White);
+                std::cerr << "Blur shader not loaded." << std::endl;
 
             while (running)
             {
@@ -208,15 +207,12 @@ public:
                     drawingWantsToEnter = true;
                     std::lock_guard<std::mutex> lk(drawingMutex);
 
-                    logicFrameDone = false;
-
                     delta = clockFps.getElapsedTime().asSeconds();
                     clockFps.restart();
                     fps = (19.f * fps + 1.f / delta) / 20.f;
 
                     window.clear(sf::Color::Magenta);
                     renderTexture.clear(sf::Color::Black);
-                    //renderTexture.clear(sf::Color::Black);
 
                     //static sf::View temp;
                     //temp = target.getView();
@@ -227,7 +223,7 @@ public:
                         if (player.id == Object::thisPlayerId)
                         {
                             renderTexture.setView({player.position, renderTexture.getView().getSize()});
-                            cursor.setState(player.reload, player.aimState, player.hp, player.maxHp);
+                            cursor.setState(player.reload, player.aimState);
                             scale = {renderTexture.getView().getSize().x / (float)renderTexture.getSize().x, renderTexture.getView().getSize().y / (float)renderTexture.getSize().y};
                             break;
                         }
@@ -238,7 +234,7 @@ public:
                         cursor.setState();
                         scale = {renderTexture.getView().getSize().x / (float)renderTexture.getSize().x, renderTexture.getView().getSize().y / (float)renderTexture.getSize().y};
                     }
-    
+
                     renderTexture.draw(particleSystem);
 
                     if (gridVisible)
@@ -262,16 +258,18 @@ public:
                         renderTexture.draw(text);
                     }
 
-                    text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
-                    text.setScale(scale);
-                    text.setPosition(renderTexture.mapPixelToCoords({(int)renderTexture.getSize().x - 106, 24}));
-
+                    // View = Size block
+                    temp = renderTexture.getView();
+                    renderTexture.setView(sf::View(sf::FloatRect(0.f, 0.f, renderTexture.getSize().x, renderTexture.getSize().y)));
+                    text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f))); // Fps
+                    text.setPosition({(float)renderTexture.getSize().x - 106.f, 24.f});
+                    text.setScale(1.f, 1.f);
                     renderTexture.draw(text);
-                    cursor.update(window);
-                    renderTexture.draw(cursor);
-
-                    consoleShader.setParameter("tex", sf::Shader::CurrentTexture);
+                    consoleShader.setParameter("tex", sf::Shader::CurrentTexture); // Console
                     renderTexture.draw(console, &consoleShader);
+                    cursor.setPosition(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
+                    renderTexture.draw(cursor);
+                    renderTexture.setView(temp);
 
                     drawingWantsToEnter = false;
                 }
@@ -311,10 +309,8 @@ public:
         while (window.isOpen())
         {
             std::unique_lock<std::mutex> lk(drawingMutex);
-            while (drawingWantsToEnter && logicFrameDone)
+            while (drawingWantsToEnter)
                 drawingCv.wait(lk);
-
-            logicFrameDone = true;
 
             now = std::chrono::high_resolution_clock::now();
             delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
@@ -340,10 +336,25 @@ public:
                     case sf::Keyboard::Down:
                         console.put(L'[');
                         break;
+                    case sf::Keyboard::Left:
+                        console.put(Console::left);
+                        break;
+                    case sf::Keyboard::Right:
+                        console.put(Console::right);
+                        break;
+                    case sf::Keyboard::C:
+                        if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
+                            console.put(Console::copy);
+                        break;
+                    case sf::Keyboard::V:
+                        if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
+                            console.put(Console::paste);
+                        break;
                     }
                     break;
                 case sf::Event::TextEntered:
-                    console.put((wchar_t)event.text.unicode);
+                    if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
+                        console.put((wchar_t)event.text.unicode);
                     break;
                 case sf::Event::Resized:
                 {
@@ -356,7 +367,7 @@ public:
                     renderTexture2.setSmooth(true);
                     renderTexture2.setView(renderTexture.getView());
 
-                    window.setView(sf::View(sf::FloatRect(0.f, 0.f, (float)event.size.width, (float)event.size.height)));
+                    window.setView(renderTexture.getView());
                     break;
                 }
                 case sf::Event::MouseWheelScrolled:
@@ -485,7 +496,7 @@ public:
                     if (downEvent.explosion)
                     {
                         resourceManager::playSound("explosion.wav");
-                        particleSystem.impulse(downEvent.collision);
+                        particleSystem.impulse(downEvent.collision, downEvent.explosion);
                         if (downEvent.message.size())
                             console << downEvent.message;
                     }

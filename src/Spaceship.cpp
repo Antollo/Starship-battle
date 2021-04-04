@@ -11,9 +11,9 @@ Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId) :
     bodyDef.angularDamping = jsonObject["angularDamping"].get<float>();
     bodyDef.userData = this;
     bodyDef.position = Object::getMap().randomPosition();
-    //bodyDef.position.x = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
-    //bodyDef.position.y = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
-    bodyDef.angle = rng01(mt) * 2.f * pi;
+    //bodyDef.position.x = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
+    //bodyDef.position.y = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
+    bodyDef.angle = uniformRNG<0, 1, 1, 1>() * 2.f * pi;
 
     body = world.CreateBody(&bodyDef);
 
@@ -65,7 +65,7 @@ Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId) :
 
     for (const auto &shieldJson : shieldsJson)
     {
-        shield = Shield::create(shieldJson["points"].get<std::vector<Vec2f>>(), -getId());
+        shield = Shield::create(shieldJson["points"].get<std::vector<Vec2f>>(), -getId(), bodyDef.position);
         shield->connect(body, shieldJson["x"].get<float>(), shieldJson["y"].get<float>());
         shields.push_back(shield->getId());
     }

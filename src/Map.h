@@ -24,8 +24,8 @@ public:
     }
     b2Vec2 randomPosition() const override
     {
-        return {(Object::rng01(Object::mt) * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale,
-                (Object::rng01(Object::mt) * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale};
+        return {(Object::uniformRNG<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale,
+                (Object::uniformRNG<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale};
     }
 };
 
@@ -40,10 +40,10 @@ public:
                 point = '.';
         for (auto &room : rooms)
         {
-            room.x = width * Object::rng01(Object::mt);
-            room.y = height * Object::rng01(Object::mt);
-            room.width = radius * Object::rng025(Object::mt);
-            room.height = radius * Object::rng025(Object::mt);
+            room.x = width * Object::uniformRNG<0, 1, 1, 1>();
+            room.y = height * Object::uniformRNG<0, 1, 1, 1>();
+            room.width = radius * Object::uniformRNG<3, 4, 5, 4>();
+            room.height = radius * Object::uniformRNG<3, 4, 5, 4>();
             for (int i = room.y - room.height; i <= room.y + room.height; i++)
                 for (int j = room.x - room.width; j <= room.x + room.width; j++)
                     if (i >= 0 && i < height && j >= 0 && j < width)
@@ -66,7 +66,7 @@ public:
 
     b2Vec2 randomPosition() const override
     {
-        int i = rooms.size() * Object::rng01(Object::mt);
+        int i = rooms.size() * Object::uniformRNG<0, 1, 1, 1>();
         return {transform(rooms[i].x), transform(rooms[i].y)};
     }
 
@@ -170,7 +170,7 @@ private:
 
 Map *Map::create()
 {
-    if (Object::rng01(Object::mt) >= 0.5f)
+    if (Object::uniformRNG<0, 1, 1, 1>() >= 0.5f)
         return new MazeMap();
     else
         return new OpenMap();

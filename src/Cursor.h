@@ -19,8 +19,12 @@ class Cursor : public sf::Drawable, public sf::Transformable
 public:
     Cursor() : reloadState(0.f), aimState(true)
     {
-        text.setFont(resourceManager::getFont("UbuntuMono.ttf"));
-        text.setCharacterSize(18u);
+        const auto fontName =  resourceManager::getJSON("config")["fontName"].get<std::string>();
+        const auto fontSize =  resourceManager::getJSON("config")["fontSize"].get<int>();
+
+
+        text.setFont(resourceManager::getFont(fontName));
+        text.setCharacterSize(fontSize - 2);
         text.setFillColor(sf::Color::White);
         text.setOrigin(-64.f, (float)text.getCharacterSize());
 
@@ -49,7 +53,7 @@ public:
         circle.setOutlineThickness(resourceManager::getJSON("config")["lineWidth"].get<float>());
         circle.setFillColor(sf::Color::Transparent);
     }
-    void setState(const float &newReloadState = 0.f, bool newAimState = true, const int &hp = 0, const int &maxHp = 0)
+    void setState(const float &newReloadState = 0.f, bool newAimState = true)
     {
         reloadState = newReloadState;
         if (aimState != newAimState)
@@ -70,18 +74,8 @@ public:
             }
             aimState = newAimState;
         }
-        if (hp)
-            hpState = L"Hp: "s + std::to_wstring(hp) + L"/"s + std::to_wstring(maxHp);
-        else
-            hpState = L""s;
-    }
 
-    void update(const sf::RenderWindow &window)
-    {
-        //hack.setScale(window.getView().getSize().x / (float)window.getSize().x, window.getView().getSize().y / (float)window.getSize().y);
-        sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        setPosition(mousePos);
-        text.setString(L"X: "s + to_wstring_with_precision(std::roundf(mousePos.x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(mousePos.y)));
+        text.setString(L"X: "s + to_wstring_with_precision(std::roundf(getPosition().x)) + L"\nY: "s + to_wstring_with_precision(std::roundf(getPosition().y)));
 
         size_t reloaded = (size_t)std::min(reloadState * 32.f, 32.f);
         for (size_t i = 0; i < reloaded; i++)
@@ -94,20 +88,13 @@ public:
 private:
     void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
     {
-        static sf::View temp;
-        temp = target.getView();
-        target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
-
         states.transform = getTransform();
         target.draw(text, states);
         target.draw(polygon, states);
         target.draw(circle, states);
         target.draw(dots, states);
-
-        target.setView(temp);
     }
     sf::Text text;
-    std::wstring hpState;
     sf::CircleShape circle;
     sf::VertexArray polygon;
     sf::VertexArray dots;

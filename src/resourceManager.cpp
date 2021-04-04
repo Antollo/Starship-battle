@@ -28,7 +28,7 @@ const json &resourceManager::getJSON(const std::string &name)
         static json ret = {{"sha256", digestpp::sha256().absorb(str).hexdigest()}};
         return ret;
     }
-    if (!jsonMap.count(name))
+    else if (!jsonMap.count(name))
     {
         std::ifstream file(name + ".json");
         if (!file.good())

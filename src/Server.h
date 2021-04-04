@@ -167,28 +167,28 @@ public:
                         DownEvent message(DownEvent::Type::Message);
                         message.message = upEvent.command.erase(0, 8) + L"\n";
                         downEvents.push_back(message);
-                        break;
                     }
                     else if (upEvent.command.find(L"m ") == 0)
                     {
                         DownEvent message(DownEvent::Type::Message);
                         message.message = upEvent.command.erase(0, 2) + L"\n";
                         downEvents.push_back(message);
-                        break;
                     }
+                    else
                     {
+
                         DownEvent response(DownEvent::Type::Response);
                         response.message = commandProcessor.call(upEvent.command);
                         packet.clear();
                         packet << response;
+                        {
+                            mainWantsToEnter = true;
+                            std::lock_guard<std::mutex> lk(serverMutex);
+                            server.respond(packet, el.second);
+                            mainWantsToEnter = false;
+                        }
+                        cv.notify_one();
                     }
-                    {
-                        mainWantsToEnter = true;
-                        std::lock_guard<std::mutex> lk(serverMutex);
-                        server.respond(packet, el.second);
-                        mainWantsToEnter = false;
-                    }
-                    cv.notify_one();
                     break;
                 case UpEvent::Type::Ping:
                     packet.clear();

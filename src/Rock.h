@@ -64,15 +64,15 @@ private:
         bodyDef.linearDamping = 0.5f;
         bodyDef.angularDamping = 0.5f;
         bodyDef.userData = this;
-        bodyDef.position.x = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
-        bodyDef.position.y = (rng01(mt) * worldLimits * 2.f - worldLimits)/worldScale;
+        bodyDef.position.x = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
+        bodyDef.position.y = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
 
         body = world.CreateBody(&bodyDef);
         std::vector<Vec2f> points(n);
-        float angle, radius = Object::rng01(mt) * 8.f + 6.f;
+        float angle, radius = Object::uniformRNG<0, 1, 1, 1>() * 8.f + 6.f;
         for (auto& point : points)
         {
-            angle = Object::rng01(mt) * pi * 2.f;
+            angle = Object::uniformRNG<0, 1, 1, 1>() * pi * 2.f;
             point.x = std::cos(angle) * radius;
             point.y = std::sin(angle) * radius;
         }
@@ -84,7 +84,7 @@ private:
         shape.Set(reinterpret_cast<b2Vec2*>(points.data()), n);
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensity;
+        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensity;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
@@ -119,7 +119,7 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensityForBorders;
+        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensityForBorders;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
@@ -150,7 +150,7 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::rng01(mt) * baseDensityForBorders;
+        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensityForBorders;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;

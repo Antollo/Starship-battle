@@ -7,7 +7,7 @@ endif()
 set(SECRET $ENV{STBT_SECRET})
 configure_file(secret.h.in secret.h)
 
-add_executable(starship_battle_game main.cpp Object.cpp Console.cpp Spaceship.cpp ContactListener.cpp CommandProcessor.cpp resourceManager.cpp)
+add_executable(starship_battle_game main.cpp Object.cpp Spaceship.cpp ContactListener.cpp CommandProcessor.cpp resourceManager.cpp)
 
 #find_package(OpenMP REQUIRED)
 

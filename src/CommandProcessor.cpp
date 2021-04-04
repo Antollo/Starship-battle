@@ -18,7 +18,7 @@ CommandProcessor::CommandProcessor()
     bind(L"create-random-bot", [](std::wstring shipType) {
         json jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
-        std::size_t i = float(spaceships.size()) * Object::rng01(Object::mt);
+        std::size_t i = float(spaceships.size()) * Object::uniformRNG<0, 1, 1, 1>();
         Bot::create(spaceships[i]);
         return L"print Bot is ready.\n"s;
     });

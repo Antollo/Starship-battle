@@ -36,7 +36,7 @@ private:
     virtual void draw(RenderSerializerBase &renderSerializer, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept = 0;
 };
 
-class Object : public sf::Drawable, public sf::Transformable, public RenderSerializable
+class Object : public sf::Transformable, public RenderSerializable
 {
 public:
     using ObjectId = std::int32_t;
@@ -74,7 +74,18 @@ public:
     static b2World world;
     static std::random_device rd;
     static std::mt19937 mt;
-    static std::uniform_real_distribution<float> rng025, rng01;
+    template <int AN, int AD, int BN, int BD>
+    static float uniformRNG()
+    {
+        static std::uniform_real_distribution<float> dist((float)AN / (float)AD, (float)BN / (float)BD);
+        return dist(mt);
+    }
+    template <int MN, int MD, int DN, int DD>
+    static float normalRNG()
+    {
+        static std::normal_distribution<float> dist((float)MN / (float)MD, (float)DN / (float)DD);
+        return dist(mt);
+    }
     static constexpr float worldScale = 40.f;
     static constexpr float worldLimits = 12000.f;
     virtual ~Object() {}
@@ -99,7 +110,7 @@ public:
             destroyAll(false);
     }
     static void setMap(Map *m);
-    static const Map& getMap()
+    static const Map &getMap()
     {
         return *map;
     }
@@ -109,11 +120,6 @@ protected:
     sf::VertexArray polygon;
 
 private:
-    virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
-    {
-        states.transform *= getTransform();
-        target.draw(polygon, states);
-    }
     void draw(RenderSerializerBase &target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
@@ -122,11 +128,7 @@ private:
 
     void onDestroy()
     {
-        //objects.erase(getId()); Bullets represents owners;
         objects.erase(id);
-        /*objects.erase(std::find_if(objects.begin(), objects.end(), [this](const auto& it) {
-            return it.second.get() == this;
-        }));*/
     }
 
     static Map *map;
