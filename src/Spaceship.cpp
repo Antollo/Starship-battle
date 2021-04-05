@@ -1,7 +1,7 @@
 #include "Spaceship.h"
 #include "Map.h"
 
-Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId) : forward(false), left(false), right(false), shoot(false), playerId(newPlayerId)
+Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId, ObjectId objectId) : Object(objectId), forward(false), left(false), right(false), shoot(false), playerId(newPlayerId)
 {
     json jsonObject = resourceManager::getJSON(type);
 
@@ -28,6 +28,7 @@ Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId) :
     fixtureDef.friction = jsonObject["friction"].get<float>();
     fixtureDef.filter.groupIndex = -getId();
     fixtureDef.shape = &shape;
+    fixtureDef.thickShape = true;
     body->CreateFixture(&fixtureDef);
 
     polygon.resize(n + 1);

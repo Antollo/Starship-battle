@@ -45,18 +45,100 @@ CommandProcessor::CommandProcessor()
         return L"print Joining team failed.\nYou don't have a spaceship or there's no such team.\n"s;
     });
 
-    bind(L"team-stats", [](std::wstring teamName, Object::ObjectId id) {
+    bind(L"team-stats", []() {
         std::wstring res = L"print Stats:\n";
-        Stats::forEach([&res](const std::wstring& teamName, const Stats& stats){
+        Stats::forEach([&res](const std::wstring &teamName, const Stats &stats) {
             res += teamName + L"\n";
             res += L"    Damage dealt: " + std::to_wstring(std::lround(stats.damage)) + L"\n";
             res += L"    Hp lost:      " + std::to_wstring(std::lround(stats.hp)) + L"\n";
             res += L"    Pilots:       ";
-            for (const auto& pilotName : stats.pilots)
-                 res += pilotName + L" ";
+            for (const auto &pilotName : stats.pilots)
+                res += pilotName + L" ";
             res += L"\n";
         });
         return res;
+    });
+
+    bind(L"wish", [](Object::ObjectId id) -> std::wstring {
+        static constexpr auto message = L"print Making wish failed.\nYou don't have a spaceship.\n";
+        if (id == 0)
+            return message;
+        auto object = Object::objects.find(id);
+        if (object == Object::objects.end())
+            return message;
+        auto spaceship = dynamic_cast<Spaceship *>(object->second.get());
+        if (spaceship == nullptr)
+            return message;
+
+        int r = Object::uniformRNG<0, 1, 10, 1>();
+
+        switch (r)
+        {
+        case 0:
+        {
+            auto pilotName = spaceship->getPlayerId();
+            Object::objects.erase(id);
+            Spaceship::create("V7-C5", pilotName, id);
+            return LR"#(print 
+   ________________________
+ / \                       \.
+|   |         *****        |.
+ \_ |  V7 Constellation 5  |.
+    |       (V7-C5)        |.
+    |   5 star battleship  |.
+    |   ___________________|___
+    |  /                      /.
+    \_/______________________/.
+)#"s;
+        }
+        case 1:
+        case 2:
+        {
+            spaceship->increaseArmor(1.f);
+            spaceship->inceaseHp(-160.f);
+            return LR"#(print 
+   _______________________
+ / \                      \.
+|   |        ****         |.
+ \_ |  Divine Protection  |.
+    |  +1 armor, -160 hp  |.
+    |    4 star upgrade   |.
+    |   __________________|___
+    |  /                     /.
+    \_/_____________________/.
+)#"s;
+        }
+        case 3:
+        case 4:
+        {
+            spaceship->inceaseHp(320.f);
+            return LR"#(print 
+   __________________
+ / \                 \.
+|   |      ***       |.
+ \_ |      Heal      |.
+    |    +320 hp     |.
+    |  3 star spell  |.
+    |   _____________|___
+    |  /               /.
+    \_/_______________/.
+)#"s;
+        }
+
+        default:
+            spaceship->inceaseHp(-160.f);
+            return LR"#(print 
+   _______________
+ / \              \.
+|   |      *       |.
+ \_ |  Nothing XD  |.
+    |   -160 hp    |.
+    |    1 star    |.
+    |   ___________|__
+    |  /             /.
+    \_/_____________/.
+)#"s;
+        }
     });
 
     bind(L"borders", []() {
@@ -67,20 +149,20 @@ CommandProcessor::CommandProcessor()
     bind(L"bots-battle", [this]() {
         Object::destroyAll();
         Object::setMap(Map::create());
-            /*std::size_t n = 60;
+        /*std::size_t n = 60;
             while (n--)
                 Rock::create();*/
-            
+
         call(L"borders"s);
 
         int n = 10;
         while (n--)
             call(L"create-bots"s);
 
-        for (const auto& obj : Object::objects)
+        for (const auto &obj : Object::objects)
             if (obj.second->getTypeId() == Object::TypeId::Bot)
                 Bot::allTarget(obj.second->getId());
-        
+
         return L"print Bots battle started.\n"s;
     });
 
@@ -104,7 +186,7 @@ CommandProcessor::CommandProcessor()
 
     bind(L"list-spaceships", []() {
         std::wstring res = L"print "s;
-        const json& jsonObject = resourceManager::getJSON("config");
+        const json &jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
         for (const auto &name : spaceships)
         {
@@ -113,11 +195,6 @@ CommandProcessor::CommandProcessor()
         return res;
     });
 
-    bind(L"beep", []() {
-        resourceManager::playSound("glitch.wav");
-        return L"print Server beeped.\n"s;
-    });
-    
     bind(L"help", []() {
         return L"print \n"
                L"Spaceship commander command prompt\n"
@@ -146,7 +223,7 @@ CommandProcessor::CommandProcessor()
                L"    delete                               \n"
                L"    credits                              \n"
                L"    grid [on/off]                        (aliased as 'g')\n"
-               L"    beep                                 \n"s;
+               L"    wish                                 \n";
     });
 
     alias(L"create", L"c");

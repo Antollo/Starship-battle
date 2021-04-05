@@ -214,10 +214,6 @@ public:
                     window.clear(sf::Color::Magenta);
                     renderTexture.clear(sf::Color::Black);
 
-                    //static sf::View temp;
-                    //temp = target.getView();
-                    //target.setView(sf::View(sf::FloatRect(0.f , 0.f, (float) target.getSize().x, (float) target.getSize().y)));
-
                     for (const auto &player : downEventDirectDraw.players)
                     {
                         if (player.id == Object::thisPlayerId)
@@ -267,7 +263,7 @@ public:
                     renderTexture.draw(text);
                     consoleShader.setParameter("tex", sf::Shader::CurrentTexture); // Console
                     renderTexture.draw(console, &consoleShader);
-                    cursor.setPosition(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
+                    cursor.setPosition(renderTexture.mapPixelToCoords(sf::Mouse::getPosition(window)));
                     renderTexture.draw(cursor);
                     renderTexture.setView(temp);
 
@@ -430,10 +426,24 @@ public:
                     else if (command.find(L"off") != std::wstring::npos)
                         gridVisible = false;
                 }
-                else if (command.find(L"join-team ") == 0 || command.find(L"jt ") == 0 || command.find(L"team-stats ") == 0 || command.find(L"s ") == 0)
-                    upEvents.emplace_back(UpEvent::Type::Command, command + L" " + std::to_wstring(Object::thisPlayerId));
                 else
+                {
+                    std::wstring idString;
+                    switch (command[0])
+                    {
+                    case L'j':
+                        if (command.find(L"join-team ") == 0 || command.find(L"jt ") == 0)
+                            idString = L" " + std::to_wstring(Object::thisPlayerId);
+                        break;
+                    case L'w':
+                        if (command.find(L"wish") == 0)
+                            idString = L" " + std::to_wstring(Object::thisPlayerId);
+                        break;
+                    }
+                    if (!idString.empty())
+                        command += idString;
                     upEvents.emplace_back(UpEvent::Type::Command, command);
+                }
             }
 
             if (Object::thisPlayerId != -1 && clockAimCoords.getElapsedTime().asSeconds() >= aimCoordsSignalInterval)
@@ -493,15 +503,21 @@ public:
                     downEventDirectDraw = std::move(downEvent);
                     break;
                 case DownEvent::Type::Collision:
-                    if (downEvent.explosion)
+                    switch (downEvent.explosion)
                     {
+                    case 0:
+                        resourceManager::playSound("ricochet.ogg");
+                        break;
+                    case 1:
+                        particleSystem.impulse(downEvent.collision, downEvent.explosion);
+                        break;
+                    default:
                         resourceManager::playSound("explosion.wav");
                         particleSystem.impulse(downEvent.collision, downEvent.explosion);
                         if (downEvent.message.size())
                             console << downEvent.message;
+                        break;
                     }
-                    else
-                        resourceManager::playSound("ricochet.ogg");
                     break;
                 case DownEvent::Type::Message:
                     console << downEvent.message;

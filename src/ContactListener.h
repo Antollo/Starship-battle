@@ -122,19 +122,14 @@ private:
                     player.hp = player.maxHp;
                 }
 
-                //if (spaceship->getTypeId() == Object::TypeId::Bot)
-                //    dynamic_cast<Bot *>(spaceship)->target(bullet->getId());
+                if (spaceship->getTypeId() == Object::TypeId::Bot)
+                    dynamic_cast<Bot *>(spaceship)->target(bullet->getId());
             }
             else
             {
                 downEvents.emplace_back(DownEvent::Type::Collision);
                 downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
-                bulletAngle += 2.f * angle;
-                if (bulletAngle < 0.f)
-                    bulletAngle += 2.f * pi;
-                else if (bulletAngle > 2 * pi)
-                    bulletAngle -= 2.f * pi;
-                downEvents.back().explosion = bulletAngle / (2.f * pi) * 253.f + 2.f;
+                downEvents.back().explosion = 0;
                 downEvents.back().message = L"";
                 //downEvents.back().message = spaceship->playerId + L" bounced the bullet\n";
             }

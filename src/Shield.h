@@ -84,6 +84,7 @@ private:
         bodyDef.angularDamping = 1.f;
         bodyDef.userData = this;
         bodyDef.position = position;
+        bodyDef.bullet = true;
 
         body = world.CreateBody(&bodyDef);
 
@@ -112,11 +113,10 @@ private:
         }
         polygon[points.size()] = polygon[0];
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override {}
-    void drawS(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept
+    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
-        target.draw(polygon, states, position, linearVelocity, angularVelocity);
+        target.draw(polygon, states, getCenterPosition(), getLinearVelocity(), getAngularVelocity());
     }
     friend class Spaceship;
     b2Body* body;

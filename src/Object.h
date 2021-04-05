@@ -60,6 +60,11 @@ public:
         if (counter == std::numeric_limits<Object::ObjectId>::max())
             counter = 1;
     };
+    Object(ObjectId objectId) : destroy(false), id(objectId != 0 ? objectId : ++counter)
+    {
+        if (counter == std::numeric_limits<Object::ObjectId>::max())
+            counter = 1;
+    };
     virtual ObjectId getId() { return id; }
     virtual void process(float delta) = 0;
     void checkDestroy()

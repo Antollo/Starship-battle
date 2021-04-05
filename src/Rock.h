@@ -88,6 +88,7 @@ private:
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
+        fixtureDef.thickShape = true;
         body->CreateFixture(&fixtureDef);
 
         polygon.resize(n + 1);

@@ -11,13 +11,13 @@
 class Spaceship : public Object
 {
 public:
-    static Spaceship *create(const std::string &type, const std::wstring &playerId)
+    static Spaceship *create(const std::string &type, const std::wstring &playerId, Object::ObjectId id = 0)
     {
         if (type.empty())
             throw std::runtime_error("Type of spaceship was empty.");
         if (playerId.empty())
             throw std::runtime_error("Commander ID was empty.");
-        auto spaceship = new Spaceship(type, playerId);
+        auto spaceship = new Spaceship(type, playerId, id);
         objects.emplace(spaceship->getId(), spaceship);
         return spaceship;
     }
@@ -54,11 +54,19 @@ public:
     {
         return hp;
     }
+    void inceaseHp(float value)
+    {
+        hp += value;
+    }
+    void increaseArmor(float value)
+    {
+        armor += value;
+    }
     const std::wstring &getPlayerId() const
     {
         return playerId;
     }
-    const std::vector<std::pair<Vec2f, Vec2f>>& getEdges() const
+    const std::vector<std::pair<Vec2f, Vec2f>> &getEdges() const
     {
         static std::vector<std::pair<Vec2f, Vec2f>> ret;
         ret.resize(polygon.getVertexCount() - 1);
@@ -111,7 +119,7 @@ public:
     Vec2f aimCoords;
 
 private:
-    Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1));
+    Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1), ObjectId objectId = 0);
     void draw(RenderSerializerBase &target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
     {
         states.transform *= getTransform();
@@ -121,8 +129,6 @@ private:
         target.draw(polygon, states, myPosition, myLinearVelocity, myAngularVelocity);
         for (const Turret &turret : turrets)
             target.draw(turret, states, myPosition, myLinearVelocity, myAngularVelocity);
-        for (const ObjectId &objectId : shields)
-            dynamic_cast<const Shield *>(objects[objectId].get())->drawS(target, sf::RenderStates::Default, myPosition, myLinearVelocity, myAngularVelocity);
     }
     void onForward() noexcept
     {
@@ -136,7 +142,8 @@ private:
     {
         body->ApplyTorque(torque, true);
     }
-    inline float piPi(float x){
+    inline float piPi(float x)
+    {
         x = std::fmod(x + pi, 2 * pi);
         if (x < 0)
             x += 2 * pi;
@@ -149,7 +156,7 @@ private:
         for (Turret &turret : turrets)
         {
             targetRelativeToTurret = getInverseTransform().transformPoint(aimCoords) - turret.getPosition();
-            
+
             float dest = std::atan2(targetRelativeToTurret.y, targetRelativeToTurret.x);
             aimState |= turret.setRotation(dest * 180.f / pi, delta);
         }
