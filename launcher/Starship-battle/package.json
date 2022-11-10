@@ -86,6 +86,6 @@
         "@electron-forge/maker-squirrel": "^6.0.0-beta.43",
         "@electron-forge/maker-zip": "^6.0.0-beta.43",
         "@electron-forge/publisher-github": "^6.0.0-beta.43",
-        "electron": "5.0.5"
+        "electron": "18.3.7"
     }
 }
