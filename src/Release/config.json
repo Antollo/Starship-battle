@@ -1,13 +1,23 @@
 {
-    "version": "0.6.2",
+    "version": "0.6.3",
     "executable": "starship_battle_game",
     "antialiasingLevel": 4,
     "vSync": true,
+    "framerateLimit": 60,
     "mouseScrollMultiplier": -1,
     "lineWidth": 2,
     "fontName": "UbuntuMono.ttf",
     "fontSize": 20,
     "spaceships": [
-        "D", "D+", "T-3", "T-4", "T-4A", "V3", "V7", "HAD", "V7L", "A10"
+        "D",
+        "D+",
+        "T-3",
+        "T-4",
+        "T-4A",
+        "V3",
+        "V7",
+        "HAD",
+        "V7L",
+        "A10"
     ]
 }

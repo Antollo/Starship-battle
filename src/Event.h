@@ -4,6 +4,7 @@
 #include <cassert>
 #include "Object.h"
 #include "Vec2f.h"
+#include "Shape.h"
 
 class UpEvent
 {
@@ -17,7 +18,8 @@ public:
         Shoot,
         AimCoords,
         Command,
-        Ping
+        Ping,
+        MissingShape
     };
     UpEvent(Type newType, Object::ObjectId newTargetId, bool newState)
         : type(newType), targetId(newTargetId), state(newState), coords(Vec2f(0.f, 0.f)), command(L"#")
@@ -41,6 +43,12 @@ public:
         : type(newType), targetId(-1), state(false), coords(Vec2f(0.f, 0.f)), command(L"#")
     {
         assert(type == Type::Ping);
+    }
+
+    UpEvent(Type newType, Object::ObjectId newTargetId)
+        : type(newType), targetId(newTargetId), state(false), coords(Vec2f(0.f, 0.f)), command(L"#")
+    {
+        assert(type == Type::MissingShape);
     }
 
     UpEvent()
@@ -76,7 +84,8 @@ public:
         Collision,
         Message,
         Response,
-        Pong
+        Pong,
+        MissingShape
     };
 
     DownEvent(DownEvent &&downEvent)
@@ -84,7 +93,8 @@ public:
         type = downEvent.type;
         std::swap(polygons, downEvent.polygons);
         std::swap(players, downEvent.players);
-        collision = downEvent.collision;
+        std::swap(vertices, downEvent.vertices);
+        vec = downEvent.vec;
         explosion = downEvent.explosion;
         std::swap(message, downEvent.message);
     }
@@ -96,7 +106,8 @@ public:
         type = downEvent.type;
         std::swap(polygons, downEvent.polygons);
         std::swap(players, downEvent.players);
-        collision = downEvent.collision;
+        std::swap(vertices, downEvent.vertices);
+        vec = downEvent.vec;
         explosion = downEvent.explosion;
         std::swap(message, downEvent.message);
         return *this;
@@ -104,6 +115,9 @@ public:
 
     DownEvent(const Type &newType)
         : type(newType), message(L"#") {}
+
+    DownEvent(const Type &newType, ServerShape *newShape, Shape::IdType newShapeId)
+        : type(newType), message(L"#"), shape(newShape), shapeId(newShapeId) {}
 
     DownEvent()
         : type(Type::Invalid), message(L"#") {}
@@ -114,37 +128,54 @@ public:
     {
     public:
         Polygon() {}
-        Polygon(sf::VertexArray v, sf::RenderStates s, Vec2f p, Vec2f lv, float av)
-            : vertices(v), states(s), position(p), linearVelocity(lv), angularVelocity(av) {}
+        Polygon(Shape::IdType s, float r, Vec2f p, Vec2f lv, float av)
+            : shape(s), rotation(r), position(p), linearVelocity(lv), angularVelocity(av) {}
+
+        void calculateTransform()
+        {
+            /*
+            TODO: assign elements in matrix directly
+            float angle = rotation / 180.f * pi;
+            float cosine = std::cos(angle);
+            float sine = std::sin(angle);
+            float tx = -origin.x * cosine - origin.y * sine + position.x;
+            float ty = origin.x * sine - origin.y * cosine + position.y;
+
+            transform = sf::Transform(cosine, sine, tx,
+                                      -sine, cosine, ty,
+                                      0.f, 0.f, 1.f);*/
+
+            sf::Vector2f origin = ClientShape::getShape(shape).origin;
+            transform = sf::Transform::Identity;
+            transform.translate(position).rotate(rotation).translate(-origin);
+        }
+
+        void update(float delta)
+        {
+            position += linearVelocity * delta;
+            rotation += angularVelocity * delta;
+            calculateTransform();
+        }
 
         Polygon(const Polygon &) = default;
         Polygon(Polygon &&) = default;
         Polygon &operator=(const Polygon &) = default;
         Polygon &operator=(Polygon &&) = default;
 
-        mutable sf::VertexArray vertices;
-        sf::RenderStates states;
+        sf::Transform transform;
         Vec2f position;
         Vec2f linearVelocity;
-        float angularVelocity;
+        float angularVelocity, rotation;
+        Shape::IdType shape;
 
     private:
-        static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 200);
-        virtual void draw(sf::RenderTarget &target, sf::RenderStates _) const
+        // static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 200);
+        virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const
         {
-            if (vertices.getPrimitiveType() == sf::LineStrip)
-            {
-                vertices.setPrimitiveType(sf::TriangleFan);
-                for (size_t i = 0; i < vertices.getVertexCount(); i++)
-                    vertices[i].color = semiTransparentBlack;
-                target.draw(vertices, states);
-                vertices.setPrimitiveType(sf::LineStrip);
-                for (size_t i = 0; i < vertices.getVertexCount(); i++)
-                    vertices[i].color = sf::Color::White;
-                target.draw(vertices, states);
-            }
-            else
-                target.draw(vertices, states);
+            states.transform *= transform;
+            ClientShape &ref = ClientShape::getShape(shape);
+            target.draw(ref.body, states);
+            target.draw(ref.outline, states);
         }
     };
 
@@ -163,9 +194,8 @@ public:
 
     const Player *findPlayer(Object::ObjectId id)
     {
-        std::vector<Player>::iterator it = std::find_if(players.begin(), players.end(), [&id](const Player &player) {
-            return player.id == id;
-        });
+        std::vector<Player>::iterator it = std::find_if(players.begin(), players.end(), [&id](const Player &player)
+                                                        { return player.id == id; });
         if (it == players.end())
             return nullptr;
         return &(*it);
@@ -173,7 +203,10 @@ public:
 
     std::vector<Polygon> polygons;
     std::vector<Player> players;
-    Vec2f collision;
+    std::vector<sf::Vector2f> vertices;
+    sf::Vector2f vec;
+    ServerShape *shape;
+    Shape::IdType shapeId;
     uint8_t explosion;
     std::wstring message;
 };
@@ -192,21 +225,22 @@ inline sf::Packet &operator>>(sf::Packet &packet, sf::Vector2f &v)
 
 inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
 {
-    //const float *matrix;
-    sf::Vector2f position;
+    // const float *matrix;
+    // sf::Vector2f position;
     packet << static_cast<std::uint8_t>(ev.type);
     if (ev.type == DownEvent::Type::DirectDraw)
     {
         packet << static_cast<std::uint16_t>(ev.polygons.size());
         for (const DownEvent::Polygon &polygon : ev.polygons)
         {
-            packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount() - 1);
-            packet << polygon.position << polygon.linearVelocity << polygon.angularVelocity;
-            for (size_t i = 0; i < polygon.vertices.getVertexCount() - 1; i++)
+            // packet << static_cast<std::uint8_t>(polygon.vertices.getPrimitiveType()) << static_cast<std::uint8_t>(polygon.vertices.getVertexCount() - 1);
+            packet << polygon.shape << polygon.rotation << polygon.position << polygon.linearVelocity << polygon.angularVelocity;
+            /*for (size_t i = 0; i < polygon.vertices.getVertexCount() - 1; i++)
             {
-                position = polygon.states.transform.transformPoint(polygon.vertices[i].position);
+                //TODO
+                position = polygon.vertices[i].position; //polygon.states.transform.transformPoint(polygon.vertices[i].position);
                 packet << position;
-            }
+            }*/
         }
         packet << static_cast<std::uint16_t>(ev.players.size());
         for (const DownEvent::Player &player : ev.players)
@@ -214,8 +248,17 @@ inline sf::Packet &operator<<(sf::Packet &packet, const DownEvent &ev)
             packet << player.id << player.playerId << player.position << player.linearVelocity << player.reload << player.aimState << player.hp << player.maxHp;
         }
     }
+    else if (ev.type == DownEvent::Type::MissingShape)
+    {
+        std::uint16_t size;
+        packet << ev.shapeId;
+        packet << ev.shape->origin;
+        packet << std::uint16_t(ev.shape->vertices.size());
+        for (const auto &vertex : ev.shape->vertices)
+            packet << vertex;
+    }
     else
-        packet << ev.collision << ev.explosion << ev.message;
+        packet << ev.vec << ev.explosion << ev.message;
     return packet;
 }
 
@@ -232,18 +275,7 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
         ev.polygons.resize(size);
         for (DownEvent::Polygon &polygon : ev.polygons)
         {
-            polygon.states = sf::RenderStates::Default;
-            packet >> type;
-            polygon.vertices.setPrimitiveType(static_cast<sf::PrimitiveType>(type));
-            packet >> type; // Actually size, but uint8_t
-            packet >> polygon.position >> polygon.linearVelocity >> polygon.angularVelocity;
-            polygon.vertices.resize(type + 1);
-            for (std::uint16_t i = 0; i < type; i++)
-            {
-                packet >> polygon.vertices[i].position;
-                polygon.vertices[i].color = sf::Color::White; // There's only one color in this game
-            }
-            polygon.vertices[type] = polygon.vertices[0];
+            packet >> polygon.shape >> polygon.rotation >> polygon.position >> polygon.linearVelocity >> polygon.angularVelocity;
         }
         packet >> size;
         ev.players.resize(size);
@@ -252,8 +284,18 @@ inline sf::Packet &operator>>(sf::Packet &packet, DownEvent &ev)
             packet >> player.id >> player.playerId >> player.position >> player.linearVelocity >> player.reload >> player.aimState >> player.hp >> player.maxHp;
         }
     }
+    else if (ev.type == DownEvent::Type::MissingShape)
+    {
+        std::uint16_t size;
+        packet >> ev.shapeId;
+        packet >> ev.vec;
+        packet >> size;
+        ev.vertices.resize(size);
+        for (auto &vertex : ev.vertices)
+            packet >> vertex;
+    }
     else
-        packet >> ev.collision >> ev.explosion >> ev.message;
+        packet >> ev.vec >> ev.explosion >> ev.message;
     return packet;
 }
 

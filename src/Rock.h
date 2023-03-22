@@ -12,9 +12,9 @@ public:
     {
         return dynamic_cast<Rock*>(objects.emplace(counter, new Rock()).first->second.get());
     }
-    static Rock* create(const sf::VertexArray& newPolygon, b2Body* newBody)
+    static Rock* create(Shape::IdType newShape, b2Body* newBody)
     {
-        return dynamic_cast<Rock*>(objects.emplace(counter, new Rock(newPolygon, newBody)).first->second.get());
+        return dynamic_cast<Rock*>(objects.emplace(counter, new Rock(newShape, newBody)).first->second.get());
     }
     static Rock* create(std::vector<Vec2f> points, float x, float y)
     {
@@ -64,15 +64,15 @@ private:
         bodyDef.linearDamping = 0.5f;
         bodyDef.angularDamping = 0.5f;
         bodyDef.userData = this;
-        bodyDef.position.x = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
-        bodyDef.position.y = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
+        bodyDef.position.x = (Rng::uniform<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
+        bodyDef.position.y = (Rng::uniform<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
 
         body = world.CreateBody(&bodyDef);
         std::vector<Vec2f> points(n);
-        float angle, radius = Object::uniformRNG<0, 1, 1, 1>() * 8.f + 6.f;
+        float angle, radius = Rng::uniform<0, 1, 1, 1>() * 8.f + 6.f;
         for (auto& point : points)
         {
-            angle = Object::uniformRNG<0, 1, 1, 1>() * pi * 2.f;
+            angle = Rng::uniform<0, 1, 1, 1>() * pi * 2.f;
             point.x = std::cos(angle) * radius;
             point.y = std::sin(angle) * radius;
         }
@@ -84,21 +84,20 @@ private:
         shape.Set(reinterpret_cast<b2Vec2*>(points.data()), n);
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensity;
+        fixtureDef.density = randomDensity + Rng::uniform<0, 1, 1, 1>() * baseDensity;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
         fixtureDef.thickShape = true;
         body->CreateFixture(&fixtureDef);
+        body->GetMassData(&massData);
 
-        polygon.resize(n + 1);
-        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-        for (std::size_t i = 0; i < n; i++)
-        {
-            polygon[i].position = (sf::Vector2f) points[i] * worldScale;
-            polygon[i].color = sf::Color::White;
-        }
-        polygon[n] = polygon[0];
+        points.resize(points.size() + 1);
+        for (size_t i = 0; i < points.size(); i++)
+            points[i] = points[i] * worldScale;
+        points.back() = points.front();
+
+        RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
     }
     Rock(std::vector<Vec2f>& points, float x, float y)
     {
@@ -120,20 +119,19 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensityForBorders;
+        fixtureDef.density = randomDensity + Rng::uniform<0, 1, 1, 1>() * baseDensityForBorders;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
         body->CreateFixture(&fixtureDef);
+        body->GetMassData(&massData);
 
-        polygon.resize(points.size() + 1);
-        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-        for (std::size_t i = 0; i < points.size(); i++)
-        {
-            polygon[i].position = (sf::Vector2f) points[i] * worldScale;
-            polygon[i].color = sf::Color::White;
-        }
-        polygon[points.size()] = polygon[0];
+        points.resize(points.size() + 1);
+        for (size_t i = 0; i < points.size(); i++)
+            points[i] = points[i] * worldScale;
+        points.back() = points.front();
+
+        RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
     }
     Rock(std::vector<Vec2f>& points)
     {
@@ -151,25 +149,24 @@ private:
         shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
 
         b2FixtureDef fixtureDef;
-        fixtureDef.density = randomDensity + Object::uniformRNG<0, 1, 1, 1>() * baseDensityForBorders;
+        fixtureDef.density = randomDensity + Rng::uniform<0, 1, 1, 1>() * baseDensityForBorders;
         fixtureDef.friction = 0.5f;
         fixtureDef.filter.groupIndex = 0; 
         fixtureDef.shape = &shape;
         body->CreateFixture(&fixtureDef);
+        body->GetMassData(&massData);
 
-        polygon.resize(points.size() + 1);
-        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-        for (std::size_t i = 0; i < points.size(); i++)
-        {
-            polygon[i].position = (sf::Vector2f) points[i] * worldScale;
-            polygon[i].color = sf::Color::White;
-        }
-        polygon[points.size()] = polygon[0];
+        points.resize(points.size() + 1);
+        for (size_t i = 0; i < points.size(); i++)
+            points[i] = points[i] * worldScale;
+        points.back() = points.front();
+
+        RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
     }
-    Rock(const sf::VertexArray& newPolygon, b2Body* newBody)
+    Rock(Shape::IdType newShape, b2Body* newBody)
         : body(newBody)
     {
-        polygon = newPolygon;
+        shape = newShape;
         body->SetUserData(this);
     }
     b2Body* body;

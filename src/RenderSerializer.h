@@ -10,16 +10,16 @@ class RenderSerializer : public RenderSerializerBase
 {
 public:
     RenderSerializer() : downEvent(DownEvent::Type::DirectDraw), polygonsIndex(0), playersIndex(0) {}
-    void draw(const RenderSerializable &drawable, const sf::RenderStates &states = sf::RenderStates::Default, const Vec2f &position = {0.f, 0.f}, const Vec2f &linearVelocity = {0.f, 0.f}, float angularVelocity = 0.f) noexcept override
+    void draw(const RenderSerializable &drawable) noexcept override
     {
-        drawable.draw(*this, states, position, linearVelocity, angularVelocity);
+        drawable.draw(*this);
     }
-    void draw(const sf::VertexArray &vertexArray, const sf::RenderStates &states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) noexcept override
+    void draw(Shape::IdType shape, float rotation, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) noexcept override
     {
         if (polygonsIndex < downEvent.polygons.size())
-            downEvent.polygons[polygonsIndex] = {vertexArray, states, position, linearVelocity, angularVelocity};
+            downEvent.polygons[polygonsIndex] = {shape, rotation, position, linearVelocity, angularVelocity};
         else
-            downEvent.polygons.push_back({vertexArray, states, position, linearVelocity, angularVelocity});
+            downEvent.polygons.push_back({shape, rotation, position, linearVelocity, angularVelocity});
         polygonsIndex++;
     }
     void clear()

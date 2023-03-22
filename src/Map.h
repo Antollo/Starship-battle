@@ -10,6 +10,21 @@ class Map
 public:
     virtual b2Vec2 randomPosition() const = 0;
     inline static Map *create();
+
+    static void setMap(Map *m)
+    {
+        if (map != nullptr)
+            delete map;
+        map = m;
+    }
+    
+    static const Map &getMap()
+    {
+        return *map;
+    }
+
+private:
+    static inline Map *map = nullptr;
 };
 
 class OpenMap : public Map
@@ -24,8 +39,8 @@ public:
     }
     b2Vec2 randomPosition() const override
     {
-        return {(Object::uniformRNG<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale,
-                (Object::uniformRNG<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale};
+        return {(Rng::uniform<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale,
+                (Rng::uniform<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale};
     }
 };
 
@@ -40,10 +55,10 @@ public:
                 point = '.';
         for (auto &room : rooms)
         {
-            room.x = width * Object::uniformRNG<0, 1, 1, 1>();
-            room.y = height * Object::uniformRNG<0, 1, 1, 1>();
-            room.width = radius * Object::uniformRNG<3, 4, 5, 4>();
-            room.height = radius * Object::uniformRNG<3, 4, 5, 4>();
+            room.x = width * Rng::uniform<0, 1, 1, 1>();
+            room.y = height * Rng::uniform<0, 1, 1, 1>();
+            room.width = radius * Rng::uniform<3, 4, 5, 4>();
+            room.height = radius * Rng::uniform<3, 4, 5, 4>();
             for (int i = room.y - room.height; i <= room.y + room.height; i++)
                 for (int j = room.x - room.width; j <= room.x + room.width; j++)
                     if (i >= 0 && i < height && j >= 0 && j < width)
@@ -66,7 +81,7 @@ public:
 
     b2Vec2 randomPosition() const override
     {
-        int i = rooms.size() * Object::uniformRNG<0, 1, 1, 1>();
+        int i = rooms.size() * Rng::uniform<0, 1, 1, 1>();
         return {transform(rooms[i].x), transform(rooms[i].y)};
     }
 
@@ -170,7 +185,7 @@ private:
 
 Map *Map::create()
 {
-    if (Object::uniformRNG<0, 1, 1, 1>() >= 0.5f)
+    if (Rng::uniform<0, 1, 1, 1>() >= 0.5f)
         return new MazeMap();
     else
         return new OpenMap();

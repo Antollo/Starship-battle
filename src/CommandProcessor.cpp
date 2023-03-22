@@ -18,7 +18,7 @@ CommandProcessor::CommandProcessor()
     bind(L"create-random-bot", [](std::wstring shipType) {
         json jsonObject = resourceManager::getJSON("config");
         std::vector<std::string> spaceships = jsonObject["spaceships"].get<std::vector<std::string>>();
-        std::size_t i = float(spaceships.size()) * Object::uniformRNG<0, 1, 1, 1>();
+        std::size_t i = float(spaceships.size()) * Rng::uniform<0, 1, 1, 1>();
         Bot::create(spaceships[i]);
         return L"print Bot is ready.\n"s;
     });
@@ -70,7 +70,7 @@ CommandProcessor::CommandProcessor()
         if (spaceship == nullptr)
             return message;
 
-        int r = Object::uniformRNG<0, 1, 10, 1>();
+        int r = Rng::uniform<0, 1, 10, 1>();
 
         switch (r)
         {
@@ -148,7 +148,7 @@ CommandProcessor::CommandProcessor()
 
     bind(L"bots-battle", [this]() {
         Object::destroyAll();
-        Object::setMap(Map::create());
+        Map::setMap(Map::create());
         /*std::size_t n = 60;
             while (n--)
                 Rock::create();*/

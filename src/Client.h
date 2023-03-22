@@ -8,6 +8,7 @@
 #include <future>
 #include <mutex>
 #include <atomic>
+#include <unordered_set>
 #include <condition_variable>
 #include <SFML/Graphics.hpp>
 #include <SFML/Config.hpp>
@@ -76,6 +77,7 @@ public:
         bool gridVisible = true;
         Vec2f scale;
         std::vector<UpEvent> upEvents;
+        std::unordered_set<Shape::IdType> missingShapes;
         std::mutex receivingMutex, drawingMutex, renderTextureMutex;
         std::vector<DownEvent> downEventsBuffer;
         sf::RenderWindow window;
@@ -142,6 +144,7 @@ public:
         icon.loadFromFile("icon.png");
         window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
         window.setVerticalSyncEnabled(resourceManager::getJSON("config")["vSync"].get<bool>());
+        window.setFramerateLimit(resourceManager::getJSON("config")["framerateLimit"].get<int>());
         window.setMouseCursorVisible(false);
         window.requestFocus();
         window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
@@ -474,6 +477,10 @@ public:
                     case UpEvent::Type::Ping:
                         client.sendUdp(packet);
                         break;
+                    case UpEvent::Type::MissingShape:
+                        client.sendUdp(packet);
+                        client.send(packet);
+                        break;
                     default:
                         client.send(packet);
                         break;
@@ -509,11 +516,11 @@ public:
                         resourceManager::playSound("ricochet.ogg");
                         break;
                     case 1:
-                        particleSystem.impulse(downEvent.collision, downEvent.explosion);
+                        particleSystem.impulse(downEvent.vec, downEvent.explosion);
                         break;
                     default:
                         resourceManager::playSound("explosion.wav");
-                        particleSystem.impulse(downEvent.collision, downEvent.explosion);
+                        particleSystem.impulse(downEvent.vec, downEvent.explosion);
                         if (downEvent.message.size())
                             console << downEvent.message;
                         break;
@@ -548,6 +555,10 @@ public:
                     pingClock.restart();
                     upEvents.emplace_back(UpEvent::Type::Ping);
                     break;
+                case DownEvent::Type::MissingShape:
+                    if (!ClientShape::hasShape(downEvent.shapeId))
+                        ClientShape::setShape(downEvent.shapeId, downEvent.vertices, downEvent.vec);
+                    break;
                 }
             }
             downEvents.clear();
@@ -560,9 +571,15 @@ public:
 
                 for (auto &polygon : downEventDirectDraw.polygons)
                 {
-                    polygon.states.transform.rotate(polygon.angularVelocity * halfPing, polygon.position).translate(polygon.linearVelocity * halfPing);
-                    polygon.position += polygon.linearVelocity * halfPing;
+                    polygon.update(halfPing);
+                    if (!ClientShape::hasShape(polygon.shape))
+                        missingShapes.insert(polygon.shape);
                 }
+
+                for (const auto &missingShape: missingShapes)
+                    upEvents.emplace_back(UpEvent::Type::MissingShape, missingShape);
+
+                missingShapes.clear();
 
                 for (auto &player : downEventDirectDraw.players)
                     player.position += player.linearVelocity * halfPing;
@@ -571,8 +588,7 @@ public:
             {
                 for (auto &polygon : downEventDirectDraw.polygons)
                 {
-                    polygon.states.transform.rotate(polygon.angularVelocity * delta, polygon.position).translate(polygon.linearVelocity * delta);
-                    polygon.position += polygon.linearVelocity * delta;
+                    polygon.update(delta);
                 }
 
                 for (auto &player : downEventDirectDraw.players)

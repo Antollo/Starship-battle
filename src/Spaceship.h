@@ -68,12 +68,18 @@ public:
     }
     const std::vector<std::pair<Vec2f, Vec2f>> &getEdges() const
     {
-        static std::vector<std::pair<Vec2f, Vec2f>> ret;
-        ret.resize(polygon.getVertexCount() - 1);
-        for (std::size_t i = 0; i < polygon.getVertexCount() - 1; i++)
+        auto shapePtr = ServerShape::getShape(shape);
+        if (shapePtr == nullptr)
         {
-            ret[i].first = Vec2f::asVec2f(getTransform().transformPoint(polygon[i].position) / worldScale);
-            ret[i].second = Vec2f::asVec2f(getTransform().transformPoint(polygon[i + 1].position) / worldScale);
+            static std::vector<std::pair<Vec2f, Vec2f>> ret;
+            return ret;
+        }
+        static std::vector<std::pair<Vec2f, Vec2f>> ret;
+        ret.resize(shapePtr->vertices.size() - 1);
+        for (std::size_t i = 0; i < shapePtr->vertices.size() - 1; i++)
+        {
+            ret[i].first = Vec2f::asVec2f(getTransform().transformPoint(shapePtr->vertices[i]) / worldScale);
+            ret[i].second = Vec2f::asVec2f(getTransform().transformPoint(shapePtr->vertices[i + 1]) / worldScale);
         }
         return ret;
     }
@@ -94,7 +100,7 @@ public:
                 Object::objects[id]->destroy = true;
         }
 
-        Rock::create(polygon, body);
+        Rock::create(shape, body);
     }
     void process(float delta) override
     {
@@ -120,15 +126,14 @@ public:
 
 private:
     Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1), ObjectId objectId = 0);
-    void draw(RenderSerializerBase &target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
+    void draw(RenderSerializerBase &target) const noexcept override
     {
-        states.transform *= getTransform();
         Vec2f myLinearVelocity = getLinearVelocity();
-        Vec2f myPosition = getCenterPosition();
+        float myRotation = getRotation();
         float myAngularVelocity = getAngularVelocity();
-        target.draw(polygon, states, myPosition, myLinearVelocity, myAngularVelocity);
+        target.draw(shape, myRotation, getCenterPosition(), myLinearVelocity, myAngularVelocity);
         for (const Turret &turret : turrets)
-            target.draw(turret, states, myPosition, myLinearVelocity, myAngularVelocity);
+            turret.draw(target, myRotation, getTransform(), myLinearVelocity, myAngularVelocity);
     }
     void onForward() noexcept
     {

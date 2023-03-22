@@ -69,15 +69,16 @@ private:
         fixtureDef.filter.groupIndex = index;
         fixtureDef.shape = &shape;
         body->CreateFixture(&fixtureDef);
+        body->GetMassData(&massData);
 
-        polygon.resize(points.size() + 1);
-        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-        for (std::size_t i = 0; i < points.size(); i++)
-        {
-            polygon[i].position = (*reinterpret_cast<const sf::Vector2f*>(&points[i])) * worldScale;
-            polygon[i].color = sf::Color::White;
-        }
-        polygon[points.size()] = polygon[0];
+        std::vector<Vec2f> pointsCopy(points);
+
+        pointsCopy.resize(pointsCopy.size() + 1);
+        for (size_t i = 0; i < pointsCopy.size(); i++)
+            pointsCopy[i] = pointsCopy[i] * worldScale;
+        pointsCopy.back() = pointsCopy.front();
+
+        RenderSerializable::shape = ServerShape::setShape(pointsCopy, {massData.center.x * worldScale, massData.center.y * worldScale});
 
         body->SetLinearVelocity(velocity);
         process(0);

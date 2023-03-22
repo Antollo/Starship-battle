@@ -104,7 +104,7 @@ private:
     void onShoot() noexcept override
     {
         if (clock.getElapsedTime().asSeconds() > *reloadIt)
-            if (Object::uniformRNG<0, 1, 1, 1>() < 0.3f)
+            if (Rng::uniform<0, 1, 1, 1>() < 0.3f)
                 clock.restart();
             else
                 Spaceship::onShoot();

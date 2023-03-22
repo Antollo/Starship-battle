@@ -19,7 +19,7 @@ public:
     {
 
         Object::destroyAll();
-        Object::setMap(OpenMap::create());
+        Map::setMap(OpenMap::create());
         /*std::size_t n = 60;
         while (n--)
             Rock::create();*/

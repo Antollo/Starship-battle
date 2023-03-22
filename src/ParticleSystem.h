@@ -2,6 +2,7 @@
 #define PARTICICLESYSTEM_H_
 
 #include "Object.h"
+#include "Rng.h"
 
 class ParticleSystem : public sf::Transformable, public sf::Drawable
 {
@@ -35,7 +36,7 @@ public:
             if (m_particles[i].lifetime < 0.f)
             {
                 if (explosion > 1)
-                    resetParticle(i, float(explosion - 2) * 2.f * pi / 253.f + Object::normalRNG<0, 1, 1, 10>());
+                    resetParticle(i, float(explosion - 2) * 2.f * pi / 253.f + Rng::normal<0, 1, 1, 10>());
                 else
                     resetParticle(i);
                 j++;
@@ -61,11 +62,11 @@ private:
     {
         target.draw(vertexBuffer);
     }
-    void resetParticle(std::size_t index, float angle = Object::uniformRNG<0, 1, 1, 1>() * pi * 2.f)
+    void resetParticle(std::size_t index, float angle = Rng::uniform<0, 1, 1, 1>() * pi * 2.f)
     {
-        float speed = Object::uniformRNG<0, 1, 1, 1>() * 145.f + 5.f;
+        float speed = Rng::uniform<0, 1, 1, 1>() * 145.f + 5.f;
         m_particles[index].velocity = sf::Vector2f(std::cos(angle) * speed, std::sin(angle) * speed);
-        m_particles[index].lifetime = Object::uniformRNG<0, 1, 1, 1>() * 2.7f + 0.3f;
+        m_particles[index].lifetime = Rng::uniform<0, 1, 1, 1>() * 2.7f + 0.3f;
         m_vertices[index].position = m_emitter;
         m_vertices[index].color = sf::Color::White;
     }

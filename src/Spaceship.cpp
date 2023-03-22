@@ -10,10 +10,10 @@ Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId, O
     bodyDef.linearDamping = jsonObject["linearDamping"].get<float>();
     bodyDef.angularDamping = jsonObject["angularDamping"].get<float>();
     bodyDef.userData = this;
-    bodyDef.position = Object::getMap().randomPosition();
+    bodyDef.position = Map::getMap().randomPosition();
     //bodyDef.position.x = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
     //bodyDef.position.y = (uniformRNG<0, 1, 1, 1>() * worldLimits * 2.f - worldLimits)/worldScale;
-    bodyDef.angle = uniformRNG<0, 1, 1, 1>() * 2.f * pi;
+    bodyDef.angle = Rng::uniform<0, 1, 1, 1>() * 2.f * pi;
 
     body = world.CreateBody(&bodyDef);
 
@@ -31,14 +31,14 @@ Spaceship::Spaceship(const std::string &type, const std::wstring &newPlayerId, O
     fixtureDef.thickShape = true;
     body->CreateFixture(&fixtureDef);
 
-    polygon.resize(n + 1);
-    polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-    for (std::size_t i = 0; i < n; i++)
-    {
-        polygon[i].position = (sf::Vector2f)points[i] * worldScale;
-        polygon[i].color = sf::Color::White;
-    }
-    polygon[n] = polygon[0];
+    body->GetMassData(&massData);
+
+    points.resize(n + 1);
+    for (size_t i = 0; i < n; i++)
+        points[i] = points[i] * worldScale;
+    points[n] = points[0];
+
+    RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
 
     force = jsonObject["force"].get<float>();
     torque = jsonObject["torque"].get<float>();

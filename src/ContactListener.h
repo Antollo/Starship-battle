@@ -91,8 +91,8 @@ private:
 
             float bulletAngle = std::atan2(vel1.y, vel1.x);
 
-            float damage = std::roundf(bullet->damage * Object::uniformRNG<3, 4, 5, 4>());
-            float penetration = bullet->penetration * Object::uniformRNG<3, 4, 5, 4>();
+            float damage = std::roundf(bullet->damage * Rng::uniform<3, 4, 5, 4>());
+            float penetration = bullet->penetration * Rng::uniform<3, 4, 5, 4>();
             if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 20.f && penetration > spaceship->armor)
             {
                 Stats::damageDealt(bullet->getId(), std::min(damage, spaceship->hp));
@@ -102,7 +102,7 @@ private:
                 spaceship->hp -= damage;
 
                 downEvents.emplace_back(DownEvent::Type::Collision);
-                downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 if (bulletAngle < 0.f)
                     bulletAngle += 2.f * pi;
                 else if (bulletAngle > 2 * pi)
@@ -128,7 +128,7 @@ private:
             else
             {
                 downEvents.emplace_back(DownEvent::Type::Collision);
-                downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
                 downEvents.back().explosion = 0;
                 downEvents.back().message = L"";
                 //downEvents.back().message = spaceship->playerId + L" bounced the bullet\n";
@@ -142,7 +142,7 @@ private:
             contact->GetWorldManifold(&worldManifold);
 
             downEvents.emplace_back(DownEvent::Type::Collision);
-            downEvents.back().collision = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+            downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
             downEvents.back().explosion = 1;
             downEvents.back().message = L"";
         }

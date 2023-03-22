@@ -94,7 +94,7 @@ public:
             return L"print Ranked battle mode.\nUse 'create-ranked [spaceship type] [pilot name]' to start ranked battle.\n\n"s;
         });
 
-        Object::setMap(Map::create());
+        Map::setMap(Map::create());
 
         receivingThread = std::async(std::launch::async, [&server, &running, &serverMutex, &upEventsRespondableBuffer, &cv, &mainWantsToEnter]() {
             sf::Packet packet;
@@ -123,6 +123,7 @@ public:
 
         while (true)
         {
+            //std::this_thread::sleep_for(std::chrono::milliseconds(20));
             now = std::chrono::high_resolution_clock::now();
             delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
             last = now;
@@ -140,26 +141,30 @@ public:
             for (auto &el : upEventsRespondable)
             {
                 UpEvent &upEvent = el.first;
-                if (Object::objects.count(upEvent.targetId) == 0 && upEvent.type != UpEvent::Type::Command && upEvent.type != UpEvent::Type::Invalid && upEvent.type != UpEvent::Type::Ping)
-                    continue;
+                Object::ObjectsContainer::iterator it;
                 upEventCounter++;
 
                 switch (upEvent.type)
                 {
                 case UpEvent::Type::Forward:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).forward = upEvent.state;
+                    if ((it = Object::objects.find(upEvent.targetId)) != Object::objects.end())
+                        dynamic_cast<Spaceship &>(*it->second).forward = upEvent.state;
                     break;
                 case UpEvent::Type::Left:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).left = upEvent.state;
+                    if ((it = Object::objects.find(upEvent.targetId)) != Object::objects.end())
+                        dynamic_cast<Spaceship &>(*it->second).left = upEvent.state;
                     break;
                 case UpEvent::Type::Right:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).right = upEvent.state;
+                    if ((it = Object::objects.find(upEvent.targetId)) != Object::objects.end())
+                        dynamic_cast<Spaceship &>(*it->second).right = upEvent.state;
                     break;
                 case UpEvent::Type::Shoot:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).shoot = upEvent.state;
+                    if ((it = Object::objects.find(upEvent.targetId)) != Object::objects.end())
+                        dynamic_cast<Spaceship &>(*it->second).shoot = upEvent.state;
                     break;
                 case UpEvent::Type::AimCoords:
-                    dynamic_cast<Spaceship &>(*Object::objects[upEvent.targetId]).aimCoords = upEvent.coords;
+                    if ((it = Object::objects.find(upEvent.targetId)) != Object::objects.end())
+                        dynamic_cast<Spaceship &>(*it->second).aimCoords = upEvent.coords;
                     break;
                 case UpEvent::Type::Command:
                     if (upEvent.command.find(L"message ") == 0)
@@ -200,6 +205,28 @@ public:
                         mainWantsToEnter = false;
                     }
                     cv.notify_one();
+                    break;
+                case UpEvent::Type::MissingShape:
+                    {
+                        ServerShape *shape = ServerShape::getShape(upEvent.targetId);
+                        if(shape)
+                        {
+                            std::wcout<<"Sent " << upEvent.targetId << std::endl;
+
+                            packet.clear();
+                            packet << DownEvent(DownEvent::Type::MissingShape, shape, upEvent.targetId);
+                            {
+                                mainWantsToEnter = true;
+                                std::lock_guard<std::mutex> lk(serverMutex);
+                                server.respondUdp(packet, el.second);
+                                mainWantsToEnter = false;
+                            }
+                            cv.notify_one();
+                        }
+                        else
+                            std::wcout<<"Shape " << upEvent.targetId << " not found" << std::endl;
+                        
+                    }
                     break;
                 }
             }

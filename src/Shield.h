@@ -33,7 +33,7 @@ public:
     {
         if(joint) world.DestroyJoint(joint);
 
-        Rock::create(polygon, body);
+        Rock::create(shape, body);
     }
     void process(float delta) override
     {
@@ -104,19 +104,18 @@ private:
 
         joint = nullptr;
 
-        polygon.resize(points.size() + 1);
-        polygon.setPrimitiveType(sf::PrimitiveType::LineStrip);
-        for (std::size_t i = 0; i < points.size(); i++)
-        {
-            polygon[i].position = (sf::Vector2f) points[i] * worldScale;
-            polygon[i].color = sf::Color::White;
-        }
-        polygon[points.size()] = polygon[0];
+        body->GetMassData(&massData);
+
+        points.resize(points.size() + 1);
+        for (size_t i = 0; i < points.size(); i++)
+            points[i] = points[i] * worldScale;
+        points.back() = points.front();
+
+        RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
     }
-    void draw(RenderSerializerBase& target, sf::RenderStates states, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) const noexcept override
+    void draw(RenderSerializerBase& target) const noexcept override
     {
-        states.transform *= getTransform();
-        target.draw(polygon, states, getCenterPosition(), getLinearVelocity(), getAngularVelocity());
+        target.draw(shape, getRotation(), getCenterPosition(), getLinearVelocity(), getAngularVelocity());
     }
     friend class Spaceship;
     b2Body* body;
