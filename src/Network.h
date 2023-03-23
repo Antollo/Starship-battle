@@ -38,18 +38,18 @@ public:
     sf::Socket::Status receive(sf::Packet &packet)
     {
         if (!wait())
-            return sf::Socket::NotReady;
+            return sf::Socket::Status::NotReady;
             
         if (selector.isReady(udpSocket))
         {
-            sf::IpAddress remoteAddress;
+            std::optional<sf::IpAddress> remoteAddress;
             unsigned short remotePort;
             return udpSocket.receive(packet, remoteAddress, remotePort);
         }
         if (selector.isReady(socket))
             return socket.receive(packet);
 
-        return sf::Socket::Error;
+        return sf::Socket::Status::Error;
     }
 
     sf::Socket::Status send(sf::Packet &packet)
@@ -59,7 +59,7 @@ public:
 
     sf::Socket::Status sendUdp(sf::Packet &packet)
     {
-        return udpSocket.send(packet, socket.getRemoteAddress(), socket.getRemotePort());
+        return udpSocket.send(packet, socket.getRemoteAddress().value(), socket.getRemotePort());
     }
 
 private:
@@ -71,7 +71,7 @@ private:
 class Server
 {
 public:
-    using iterator = std::pair<sf::TcpSocket *, sf::IpAddress>;
+    using iterator = std::pair<sf::TcpSocket *, std::optional<sf::IpAddress>>;
     enum class protocol
     {
         UDP,
@@ -92,12 +92,12 @@ public:
     sf::Socket::Status receive(sf::Packet &packet, iterator &remote)
     {
         if(!wait())
-            return sf::Socket::NotReady;
+            return sf::Socket::Status::NotReady;
 
         if (selector.isReady(listener))
         {
             clients.push_back(std::make_unique<sf::TcpSocket>());
-            if (listener.accept(*clients.back()) == sf::Socket::Done)
+            if (listener.accept(*clients.back()) == sf::Socket::Status::Done)
             {
                 selector.add(*clients.back());
                 std::cout << "New client connected.\n";
@@ -127,14 +127,14 @@ public:
             if (selector.isReady(current))
             {
                 remote.first = &current;
-                remote.second = current.getRemoteAddress();
+                remote.second = current.getRemoteAddress().value();
                 if (active[remote.second] == false)
                 {
                     activeCounter++;
                     active[remote.second] = true;
                 }
                 sf::Socket::Status status = current.receive(packet);
-                if (status == sf::Socket::Disconnected)
+                if (status == sf::Socket::Status::Disconnected)
                 {
                     std::cout << "Client disconnected.\n";
                     activeCounter--;
@@ -156,7 +156,7 @@ public:
 
     sf::Socket::Status respondUdp(sf::Packet &packet, iterator &remote)
     {
-        return udpSocket.send(packet, remote.second, udpSocket.getLocalPort() + 1);
+        return udpSocket.send(packet, remote.second.value(), udpSocket.getLocalPort() + 1);
     }
 
     sf::Socket::Status send(sf::Packet &packet)
@@ -192,7 +192,7 @@ private:
             {
                 pair.second = false;
                 activeCounter--;
-                udpSocket.send(packet, pair.first, udpSocket.getLocalPort() + 1);
+                udpSocket.send(packet, pair.first.value(), udpSocket.getLocalPort() + 1);
             }
         }
         return sf::Socket::Status::Done;
@@ -201,13 +201,13 @@ private:
     sf::Socket::Status sendToActiveTcp(sf::Packet &packet)
     {
         p = static_cast<int>(protocol::TCP);
-        sf::IpAddress address;
+        std::optional<sf::IpAddress> address;
         for (auto &client : clients)
         {
             address = client->getRemoteAddress();
-            if (active[address] == true)
+            if (active[address.value()] == true)
             {
-                active[address] = false;
+                active[address.value()] = false;
                 activeCounter--;
                 client->send(packet);
             }
@@ -218,7 +218,7 @@ private:
     sf::TcpListener &listener;
     sf::UdpSocket &udpSocket;
     std::vector<std::unique_ptr<sf::TcpSocket>> clients;
-    std::unordered_map<sf::IpAddress, bool> active;
+    std::unordered_map<std::optional<sf::IpAddress>, bool> active;
     sf::SocketSelector selector;
 };
 

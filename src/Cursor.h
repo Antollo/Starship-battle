@@ -26,7 +26,7 @@ public:
         text.setFont(resourceManager::getFont(fontName));
         text.setCharacterSize(fontSize - 2);
         text.setFillColor(sf::Color::White);
-        text.setOrigin(-64.f, (float)text.getCharacterSize());
+        text.setOrigin({-64.f, (float)text.getCharacterSize()});
 
         polygon.resize(4);
         polygon.setPrimitiveType(sf::PrimitiveType::Lines);
@@ -48,7 +48,7 @@ public:
         }
 
         circle.setRadius(56.f);
-        circle.setOrigin(56.f, 56.f);
+        circle.setOrigin({56.f, 56.f});
         circle.setOutlineColor(sf::Color::White);
         circle.setOutlineThickness(resourceManager::getJSON("config")["lineWidth"].get<float>());
         circle.setFillColor(sf::Color::Transparent);
@@ -86,13 +86,14 @@ public:
     }
 
 private:
-    void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
+    void draw(sf::RenderTarget &target, const sf::RenderStates &states) const override
     {
-        states.transform = getTransform();
-        target.draw(text, states);
-        target.draw(polygon, states);
-        target.draw(circle, states);
-        target.draw(dots, states);
+        sf::RenderStates transformed = states;
+        transformed.transform = getTransform();
+        target.draw(text, transformed);
+        target.draw(polygon, transformed);
+        target.draw(circle, transformed);
+        target.draw(dots, transformed);
     }
     sf::Text text;
     sf::CircleShape circle;

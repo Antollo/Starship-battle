@@ -1,5 +1,5 @@
-#ifndef VEC2F_H_
-#define VEC2F_H_
+#ifndef VEC2F_H
+#define VEC2F_H
 
 #include <cmath>
 #include <vector>
@@ -65,6 +65,14 @@ public:
     {
         return {x - v.x, y - v.y};
     }
+    Vec2f operator+(const float &s) const
+    {
+        return {x + s, y + s};
+    }
+    Vec2f operator-(const float &s) const
+    {
+        return {x - s, y - s};
+    }
     Vec2f operator*(const float &s) const
     {
         return {x * s, y * s};
@@ -77,6 +85,48 @@ public:
     {
         x += v.x;
         y += v.y;
+        return *this;
+    }
+    Vec2f &operator-=(const Vec2f &v)
+    {
+        x -= v.x;
+        y -= v.y;
+        return *this;
+    }
+    Vec2f &operator*=(const Vec2f &v)
+    {
+        x *= v.x;
+        y *= v.y;
+        return *this;
+    }
+    Vec2f &operator/=(const Vec2f &v)
+    {
+        x /= v.x;
+        y /= v.y;
+        return *this;
+    }
+    Vec2f &operator+=(const float &v)
+    {
+        x += v;
+        y += v;
+        return *this;
+    }
+    Vec2f &operator-=(const float &v)
+    {
+        x -= v;
+        y -= v;
+        return *this;
+    }
+    Vec2f &operator*=(const float &v)
+    {
+        x *= v;
+        y *= v;
+        return *this;
+    }
+    Vec2f &operator/=(const float &v)
+    {
+        x /= v;
+        y /= v;
         return *this;
     }
     Vec2f &operator=(Vec2f &&v)

@@ -8,9 +8,9 @@
 class Shield : public Object
 {
 public:
-    static Shield* create(std::vector<Vec2f> points, int index, b2Vec2 position)
+    static Shield *create(const ShieldPrototype &prototype, int index, b2Vec2 position)
     {
-        return dynamic_cast<Shield*>(objects.emplace(counter, new Shield(points, index, position)).first->second.get());
+        return dynamic_cast<Shield *>(objects.emplace(counter, new Shield(prototype, index, position)).first->second.get());
     }
     const Object::TypeId getTypeId() const override
     {
@@ -18,32 +18,31 @@ public:
     }
     Vec2f getCenterPosition() const override
     {
-        body->GetMassData(const_cast<b2MassData*>(&massData));
-        return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+        return getTransform().transformPoint(proto.origin);
     }
     Vec2f getLinearVelocity() const override
     {
-        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * world::scale;
     }
-    float getAngularVelocity() const override
+    sf::Angle getAngularVelocity() const override
     {
-        return body->GetAngularVelocity() * 180.f / pi;
+        return sf::radians(body->GetAngularVelocity());
     }
     ~Shield() override
     {
-        if(joint) world.DestroyJoint(joint);
+        if (joint)
+            world.DestroyJoint(joint);
 
-        Rock::create(shape, body);
+        Rock::create(proto.shapeId, body);
     }
     void process(float delta) override
     {
-        body->GetMassData(&massData);
-        setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);
-        setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
-        setRotation(body->GetAngle() * 180.f / pi);
-        setOrigin(0, 0);
-        //joint->SetMotorSpeed(-100.f * (piPi(joint->GetJointAngle())));
-        //std::cout<<piPi(joint->GetJointAngle())<<std::endl;
+        setOrigin(proto.origin);
+        setPosition(Vec2f::asVec2f(body->GetPosition()) * world::scale);
+        setRotation(sf::radians(body->GetAngle()));
+        setOrigin({0, 0});
+        // joint->SetMotorSpeed(-100.f * (piPi(joint->GetJointAngle())));
+        // std::cout<<piPi(joint->GetJointAngle())<<std::endl;
     }
     void connect(b2Body *shipBody, float x, float y)
     {
@@ -59,24 +58,20 @@ public:
         jointDef.localAnchorA.y -= y / 2.f;
 
         jointDef.collideConnected = true;
-        //jointDef.referenceAngle = 1;
+        // jointDef.referenceAngle = 1;
         jointDef.frequencyHz = 8;
         jointDef.dampingRatio = 0.8;
 
-        //jointDef.enableMotor = true;
-        //jointDef.maxMotorTorque = 100;
-        //jointDef
-        //jointDef.motorSpeed = 100;
-        joint = (b2WeldJoint*)world.CreateJoint(&jointDef);
+        // jointDef.enableMotor = true;
+        // jointDef.maxMotorTorque = 100;
+        // jointDef
+        // jointDef.motorSpeed = 100;
+        joint = (b2WeldJoint *)world.CreateJoint(&jointDef);
     }
+
 private:
-    inline float piPi(float x){
-        x = std::fmod(x + pi, 2 * pi);
-        if (x < 0)
-            x += 2 * pi;
-        return x - pi;
-    }
-    Shield(std::vector<Vec2f>& points, int index, b2Vec2 position)
+    Shield(const ShieldPrototype &prototype, int index, b2Vec2 position)
+        : proto(prototype)
     {
         b2BodyDef bodyDef;
         bodyDef.type = b2_dynamicBody;
@@ -88,39 +83,23 @@ private:
 
         body = world.CreateBody(&bodyDef);
 
-        std::sort(points.begin(), points.end(), [](const auto& a, const auto& b){
-            return std::atan2(a.y, a.x) < std::atan2(b.y, b.x);
-        });
-        
-        b2PolygonShape shape;
-        shape.Set(reinterpret_cast<const b2Vec2*>(points.data()), points.size());
-
         b2FixtureDef fixtureDef;
         fixtureDef.density = 1.f;
         fixtureDef.friction = 0.1f;
-        fixtureDef.filter.groupIndex = index; 
-        fixtureDef.shape = &shape;
+        fixtureDef.filter.groupIndex = index;
+        fixtureDef.shape = &proto.shape;
         body->CreateFixture(&fixtureDef);
 
         joint = nullptr;
-
-        body->GetMassData(&massData);
-
-        points.resize(points.size() + 1);
-        for (size_t i = 0; i < points.size(); i++)
-            points[i] = points[i] * worldScale;
-        points.back() = points.front();
-
-        RenderSerializable::shape = ServerShape::setShape(points, {massData.center.x * worldScale, massData.center.y * worldScale});
     }
-    void draw(RenderSerializerBase& target) const noexcept override
+    void draw(RenderSerializerBase &target) const noexcept override
     {
-        target.draw(shape, getRotation(), getCenterPosition(), getLinearVelocity(), getAngularVelocity());
+        target.draw(proto.shapeId, getRotation(), getCenterPosition(), getLinearVelocity(), getAngularVelocity());
     }
     friend class Spaceship;
-    b2Body* body;
-    b2WeldJoint* joint;
-    b2MassData massData;
+    const ShieldPrototype &proto;
+    b2Body *body;
+    b2WeldJoint *joint;
 };
 
 #endif

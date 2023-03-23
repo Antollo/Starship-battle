@@ -1,13 +1,13 @@
 #ifndef RESOURSEMANAGER_H_
 #define RESOURSEMANAGER_H_
 
-#include <map>
-#include <array>
-#include <fstream>
+#include <string>
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
-#include <digestpp.hpp>
 #include "Vec2f.h"
+
+class TurretPrototype;
+class SpaceshipPrototype;
 
 namespace resourceManager
 {
@@ -15,5 +15,7 @@ namespace resourceManager
     const sf::SoundBuffer &getSoundBuffer(const std::string &name);
     const sf::Font& getFont(const std::string& name);
     const json& getJSON(const std::string& name);
+    const TurretPrototype& getTurretPrototype(const std::string& name);
+    const SpaceshipPrototype &getSpaceshipPrototype(const std::string &name);
 }
 #endif /* !RESOURSEMANAGER_H_ */

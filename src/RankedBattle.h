@@ -39,7 +39,7 @@ public:
             sf::Http::Request request;
             sf::Http::Response response;
 
-            request.setMethod(sf::Http::Request::Post);
+            request.setMethod(sf::Http::Request::Method::Post);
             request.setUri("api/results/start");
             request.setHttpVersion(1, 1);
             request.setField("Content-Type", "application/json");
@@ -54,10 +54,10 @@ public:
                                 .dump());
             response = http.sendRequest(request);
 
-            if (response.getStatus() != sf::Http::Response::Created)
+            if (response.getStatus() != sf::Http::Response::Status::Created)
             {
                 std::cerr << "Could not save score to server." << std::endl;
-                std::cerr << "Status: " << response.getStatus() << std::endl;
+                std::cerr << "Status: " << (int)response.getStatus() << std::endl;
                 std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
                 std::cerr << "Body: " << response.getBody() << std::endl;
             }
@@ -97,7 +97,7 @@ public:
                     sf::Http::Request request;
                     sf::Http::Response response;
 
-                    request.setMethod(sf::Http::Request::Post);
+                    request.setMethod(sf::Http::Request::Method::Post);
                     request.setUri("api/results/end");
                     request.setHttpVersion(1, 1);
                     request.setField("Content-Type", "application/json");
@@ -116,10 +116,10 @@ public:
                     response = http.sendRequest(request);
                     Stats::removeTeam(pilotName);
 
-                    if (response.getStatus() != sf::Http::Response::Created)
+                    if (response.getStatus() != sf::Http::Response::Status::Created)
                     {
                         std::cerr << "Could not save score to server." << std::endl;
-                        std::cerr << "Status: " << response.getStatus() << std::endl;
+                        std::cerr << "Status: " << (int)response.getStatus() << std::endl;
                         std::cerr << "Content-Type header: " << response.getField("Content-Type") << std::endl;
                         std::cerr << "Body: " << response.getBody() << std::endl;
                     }

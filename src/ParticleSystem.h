@@ -58,15 +58,15 @@ private:
     {
         m_emitter = position;
     }
-    virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
+    virtual void draw(sf::RenderTarget &target, const sf::RenderStates &states) const override
     {
         target.draw(vertexBuffer);
     }
-    void resetParticle(std::size_t index, float angle = Rng::uniform<0, 1, 1, 1>() * pi * 2.f)
+    void resetParticle(std::size_t index, float angle = Rng::uniform() * pi * 2.f)
     {
-        float speed = Rng::uniform<0, 1, 1, 1>() * 145.f + 5.f;
+        float speed = Rng::uniform() * 145.f + 5.f;
         m_particles[index].velocity = sf::Vector2f(std::cos(angle) * speed, std::sin(angle) * speed);
-        m_particles[index].lifetime = Rng::uniform<0, 1, 1, 1>() * 2.7f + 0.3f;
+        m_particles[index].lifetime = Rng::uniform() * 2.7f + 0.3f;
         m_vertices[index].position = m_emitter;
         m_vertices[index].color = sf::Color::White;
     }

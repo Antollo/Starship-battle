@@ -1,7 +1,7 @@
 version: 0.1.{build}
 image:
-    - Visual Studio 2017
-    - Ubuntu
+    - Visual Studio 2022
+    - Ubuntu2004
 init:
     - sh: sudo apt update
     - sh: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 70 --slave /usr/bin/g++ g++ /usr/bin/g++-9

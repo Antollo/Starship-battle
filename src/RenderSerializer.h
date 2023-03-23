@@ -14,12 +14,12 @@ public:
     {
         drawable.draw(*this);
     }
-    void draw(Shape::IdType shape, float rotation, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) noexcept override
+    void draw(Shape::IdType shape, sf::Angle rotation, const Vec2f &position, const Vec2f &linearVelocity, sf::Angle angularVelocity) noexcept override
     {
         if (polygonsIndex < downEvent.polygons.size())
-            downEvent.polygons[polygonsIndex] = {shape, rotation, position, linearVelocity, angularVelocity};
+            downEvent.polygons[polygonsIndex] = {shape, rotation.asDegrees(), position, linearVelocity, angularVelocity.asDegrees()};
         else
-            downEvent.polygons.push_back({shape, rotation, position, linearVelocity, angularVelocity});
+            downEvent.polygons.push_back({shape, rotation.asDegrees(), position, linearVelocity, angularVelocity.asDegrees()});
         polygonsIndex++;
     }
     void clear()
@@ -43,7 +43,7 @@ public:
                                                        dynamic_cast<Spaceship &>(*it.second).getReloadState(),
                                                        dynamic_cast<Spaceship &>(*it.second).getAimState(),
                                                        static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).hp),
-                                                       static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).maxHp)};
+                                                       static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).getHp())};
                 else
                     downEvent.players.push_back({it.first,
                                                  dynamic_cast<Spaceship &>(*it.second).playerId,
@@ -52,7 +52,7 @@ public:
                                                  dynamic_cast<Spaceship &>(*it.second).getReloadState(),
                                                  dynamic_cast<Spaceship &>(*it.second).getAimState(),
                                                  static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).hp),
-                                                 static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).maxHp)});
+                                                 static_cast<std::int16_t>(dynamic_cast<Spaceship &>(*it.second).getHp())});
                 playersIndex++;
             }
         }

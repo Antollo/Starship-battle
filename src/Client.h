@@ -57,7 +57,7 @@ public:
             << L"version from " << CommandProcessor::converter.from_bytes(__DATE__) << L" " << CommandProcessor::converter.from_bytes(__TIME__) << L"\n"
             << L"Use 'help' command to learn the basics.\n\n";
 
-        //Client
+        // Client
         Grid grid;
         Cursor cursor;
         ParticleSystem particleSystem;
@@ -85,10 +85,12 @@ public:
         sf::Image icon;
         sf::Clock pingClock;
 
-        if (socket.connect(args["ip"], port) != sf::Socket::Status::Done)
+        sf::IpAddress ip = args["ip"].size() > 0 ? sf::IpAddress::resolve(args["ip"]).value() : sf::IpAddress::LocalHost;
+
+        if (socket.connect(ip, port) != sf::Socket::Status::Done)
         {
             sf::sleep(sf::milliseconds(100));
-            if (socket.connect(args["ip"], port) != sf::Socket::Status::Done)
+            if (socket.connect(ip, port) != sf::Socket::Status::Done)
             {
                 std::cerr << "Could not connect with " << args["ip"] << ":" << port << ".\n";
                 std::cerr << "Please try again later." << std::flush;
@@ -118,7 +120,8 @@ public:
         if (args["command"].size())
             upEvents.emplace_back(UpEvent::Type::Command, CommandProcessor::converter.from_bytes(args["command"]));
 
-        receivingThread = std::async(std::launch::async, [&client, &running, &receivingMutex, &downEventsBuffer, &socketStatus, &mainCv, &mainWantsToEnter]() {
+        receivingThread = std::async(std::launch::async, [&client, &running, &receivingMutex, &downEventsBuffer, &socketStatus, &mainCv, &mainWantsToEnter]()
+                                     {
             resourceManager::getSoundBuffer("ricochet.ogg");
             resourceManager::getSoundBuffer("explosion.wav");
             sf::Packet packet;
@@ -138,16 +141,15 @@ public:
                             break;
                     }
                 }
-            }
-        });
+            } });
 
         icon.loadFromFile("icon.png");
-        window.create(sf::VideoMode::getFullscreenModes().front(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
+        window.create(sf::VideoMode::getDesktopMode(), "Starship battle", sf::Style::Fullscreen, sf::ContextSettings(0, 0, antialiasingLevel, 3, 3, 0, false));
         window.setVerticalSyncEnabled(resourceManager::getJSON("config")["vSync"].get<bool>());
         window.setFramerateLimit(resourceManager::getJSON("config")["framerateLimit"].get<int>());
         window.setMouseCursorVisible(false);
         window.requestFocus();
-        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+        window.setIcon(icon);
         window.setKeyRepeatEnabled(false);
 
         float lineWidth = resourceManager::getJSON("config")["lineWidth"].get<float>();
@@ -155,7 +157,8 @@ public:
             // Intel drivers draws thinner lines compared to Nvidia drivers
             // (at least on my machines)
             std::string vendor(reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
-            std::transform(vendor.begin(), vendor.end(), vendor.begin(), [](char c) { return std::toupper(c, std::locale()); });
+            std::transform(vendor.begin(), vendor.end(), vendor.begin(), [](char c)
+                           { return std::toupper(c, std::locale()); });
             if (vendor.find("INTEL") != std::string::npos)
                 lineWidth *= 1.3f;
         }
@@ -169,13 +172,14 @@ public:
         glPointSize(lineWidth * 1.2f);
 
         window.setActive(false);
-        //sf::err().rdbuf(NULL);
+        // sf::err().rdbuf(NULL);
 
         drawingThread = std::async(std::launch::async, [&running, &drawingMutex, &drawingCv, &drawingWantsToEnter,
                                                         &window, &cursor, &downEventDirectDraw, &console, &scale,
                                                         &text, &alive, &gridVisible, &particleSystem, &lineWidth,
                                                         &grid, &ping, &renderTexture,
-                                                        &renderTexture2, &renderTextureMutex]() {
+                                                        &renderTexture2, &renderTextureMutex]()
+                                   {
             sf::Sprite renderTextureSprite(renderTexture.getTexture());
             sf::Shader consoleShader, crtShader, blurShader;
             sf::Clock clockFps;
@@ -185,13 +189,13 @@ public:
 
             window.setActive(true);
 
-            renderTexture.create(window.getSize().x, window.getSize().y, window.getSettings());
+            renderTexture.create(window.getSize(), window.getSettings());
             renderTexture.setSmooth(true);
             renderTexture.setView({{0.f, 0.f}, window.getView().getSize()});
 
             renderTexture.clear(sf::Color::Green);
 
-            renderTexture2.create(renderTexture.getSize().x, renderTexture.getSize().y, window.getSettings());
+            renderTexture2.create(renderTexture.getSize(), window.getSettings());
             renderTexture2.setSmooth(true);
             renderTexture2.setView(renderTexture.getView());
 
@@ -252,19 +256,19 @@ public:
                             text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp) + L"\nSpeed: " + std::to_wstring((int)std::roundf(player.linearVelocity.getLength())));
                         else
                             text.setString(player.playerId + L"\nHp: "s + std::to_wstring(player.hp) + L"/"s + std::to_wstring(player.maxHp));
-                        text.setPosition(player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f));
+                        text.setPosition({player.position.x, player.position.y + 500.f / std::max(std::sqrt(scale.y), 2.f)});
                         text.setScale(scale);
                         renderTexture.draw(text);
                     }
 
                     // View = Size block
                     temp = renderTexture.getView();
-                    renderTexture.setView(sf::View(sf::FloatRect(0.f, 0.f, renderTexture.getSize().x, renderTexture.getSize().y)));
-                    text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f))); // Fps
-                    text.setPosition({(float)renderTexture.getSize().x - 106.f, 24.f});
-                    text.setScale(1.f, 1.f);
+                    renderTexture.setView(sf::View(sf::FloatRect({0.f, 0.f}, {(float)renderTexture.getSize().x, (float)renderTexture.getSize().y})));
+                    text.setString(L"Fps:  "s + std::to_wstring((int)std::roundf(fps)) + L"\nPing: "s + std::to_wstring((int)std::roundf(ping * 1000.f / 2.f)));
+                    text.setPosition({(float)renderTexture.getSize().x - (float)renderTexture.getSize().x * 0.06f, (float)renderTexture.getSize().y * 0.03f });
+                    text.setScale({1.f, 1.f});
                     renderTexture.draw(text);
-                    consoleShader.setParameter("tex", sf::Shader::CurrentTexture); // Console
+                    consoleShader.setUniform("tex", sf::Shader::CurrentTexture); // Console
                     renderTexture.draw(console, &consoleShader);
                     cursor.setPosition(renderTexture.mapPixelToCoords(sf::Mouse::getPosition(window)));
                     renderTexture.draw(cursor);
@@ -293,11 +297,10 @@ public:
                     renderTexture.display();
                 }
 
-                crtShader.setParameter("tex", sf::Shader::CurrentTexture);
+                crtShader.setUniform("tex", sf::Shader::CurrentTexture);
                 window.draw(sf::Sprite(renderTexture.getTexture()), &crtShader);
                 window.display();
-            }
-        });
+            } });
 
         std::cout << std::flush;
         std::cerr << std::flush;
@@ -317,7 +320,7 @@ public:
 
             while (window.pollEvent(event))
             {
-                //Local events
+                // Local events
                 switch (event.type)
                 {
                 case sf::Event::Closed:
@@ -358,11 +361,11 @@ public:
                 case sf::Event::Resized:
                 {
                     std::lock_guard<std::mutex> lk(renderTextureMutex);
-                    renderTexture.create(window.getSize().x, window.getSize().y, window.getSettings());
+                    renderTexture.create({window.getSize().x, window.getSize().y}, window.getSettings());
                     renderTexture.setSmooth(true);
-                    renderTexture.setView(sf::View(sf::FloatRect(0.f, 0.f, (float)event.size.width, (float)event.size.height)));
+                    renderTexture.setView(sf::View(sf::FloatRect({0.f, 0.f}, {(float)event.size.width, (float)event.size.height})));
 
-                    renderTexture2.create(renderTexture.getSize().x, renderTexture.getSize().y, window.getSettings());
+                    renderTexture2.create({renderTexture.getSize().x, renderTexture.getSize().y}, window.getSettings());
                     renderTexture2.setSmooth(true);
                     renderTexture2.setView(renderTexture.getView());
 
@@ -385,7 +388,7 @@ public:
                 }
                 }
 
-                //Player control events
+                // Player control events
                 if (Object::thisPlayerId != -1)
                 {
                     switch (event.type)
@@ -576,7 +579,7 @@ public:
                         missingShapes.insert(polygon.shape);
                 }
 
-                for (const auto &missingShape: missingShapes)
+                for (const auto &missingShape : missingShapes)
                     upEvents.emplace_back(UpEvent::Type::MissingShape, missingShape);
 
                 missingShapes.clear();

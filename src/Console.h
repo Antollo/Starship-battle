@@ -221,9 +221,9 @@ public:
     bool isActive() const { return active; }
 
 private:
-    void draw(sf::RenderTarget &target, sf::RenderStates states) const noexcept override
+    void draw(sf::RenderTarget &target, const sf::RenderStates &states) const override
     {
-        sf::Vector2f pos(24.f, -24 + target.getView().getSize().y);
+        sf::Vector2f pos((float)target.getSize().x * 0.02f, -(float)target.getSize().y * 0.04f + target.getView().getSize().y);
 
         if (!active)
         {
@@ -243,11 +243,11 @@ private:
     }
     inline void correctOrigin() noexcept
     {
-        notificationOutput.setOrigin(0, (float)notificationOutput.getCharacterSize() * (1 + std::count(notificationOutput.getString().begin(), notificationOutput.getString().end(), '\n')));
-        textOutput.setOrigin(0, (float)textOutput.getCharacterSize() * (1 + std::count(textOutput.getString().begin(), textOutput.getString().end(), '\n')));
-        textInput.setOrigin(0, (float)textInput.getCharacterSize());
-        textPrompt.setOrigin(0, (float)textPrompt.getCharacterSize());
-        textCursor.setOrigin(0, (float)textCursor.getCharacterSize());
+        notificationOutput.setOrigin({0.f, (float)notificationOutput.getCharacterSize() * (1 + std::count(notificationOutput.getString().begin(), notificationOutput.getString().end(), '\n'))});
+        textOutput.setOrigin({0.f, (float)textOutput.getCharacterSize() * (1 + std::count(textOutput.getString().begin(), textOutput.getString().end(), '\n'))});
+        textInput.setOrigin({0.f, (float)textInput.getCharacterSize()});
+        textPrompt.setOrigin({0.f, (float)textPrompt.getCharacterSize()});
+        textCursor.setOrigin({0.f, (float)textCursor.getCharacterSize()});
     }
     void eraseOldOut()
     {
@@ -265,7 +265,7 @@ private:
     std::size_t historyIterator = 0;
     size_t inputIterator = 0;
 
-    static inline const sf::String cursor = sf::String((sf::Uint32)9608);
+    static inline const sf::String cursor = sf::String((std::uint32_t)9608);
     static inline const sf::String prompt = sf::String("$");
     float glyphWidth;
     float time = 0.f;

@@ -25,7 +25,7 @@ public:
         vertexBuffer.update(vertexArray.data());
     }
 private:
-    virtual void draw(sf::RenderTarget &target, sf::RenderStates _) const
+    virtual void draw(sf::RenderTarget &target, const sf::RenderStates &_) const
     {
         target.draw(vertexBuffer);
     }

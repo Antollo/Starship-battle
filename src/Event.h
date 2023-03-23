@@ -4,7 +4,7 @@
 #include <cassert>
 #include "Object.h"
 #include "Vec2f.h"
-#include "Shape.h"
+#include "ClientShape.h"
 
 class UpEvent
 {
@@ -147,7 +147,7 @@ public:
 
             sf::Vector2f origin = ClientShape::getShape(shape).origin;
             transform = sf::Transform::Identity;
-            transform.translate(position).rotate(rotation).translate(-origin);
+            transform.translate(position).rotate(sf::degrees(rotation)).translate(-origin);
         }
 
         void update(float delta)
@@ -169,13 +169,13 @@ public:
         Shape::IdType shape;
 
     private:
-        // static inline const sf::Color semiTransparentBlack = sf::Color(0, 0, 0, 200);
-        virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const
+        virtual void draw(sf::RenderTarget &target, const sf::RenderStates &states) const override
         {
-            states.transform *= transform;
+            sf::RenderStates transformed;
+            transformed.transform *= transform;
             ClientShape &ref = ClientShape::getShape(shape);
-            target.draw(ref.body, states);
-            target.draw(ref.outline, states);
+            target.draw(ref.body, transformed);
+            target.draw(ref.outline, transformed);
         }
     };
 

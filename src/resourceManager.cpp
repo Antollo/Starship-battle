@@ -1,9 +1,14 @@
 #include "resourceManager.h"
+#include <unordered_map>
+#include <array>
+#include <fstream>
 #include <filesystem>
+#include <digestpp.hpp>
+#include "prototypes.h"
 
 const sf::SoundBuffer &resourceManager::getSoundBuffer(const std::string &name)
 {
-    static std::map<std::string, sf::SoundBuffer> soundBufferMap;
+    static std::unordered_map<std::string, sf::SoundBuffer> soundBufferMap;
     if (!soundBufferMap.count(name))
     {
         soundBufferMap[name] = sf::SoundBuffer();
@@ -14,7 +19,7 @@ const sf::SoundBuffer &resourceManager::getSoundBuffer(const std::string &name)
 
 const json &resourceManager::getJSON(const std::string &name)
 {
-    static std::map<std::string, json> jsonMap;
+    static std::unordered_map<std::string, json> jsonMap;
     if (name == "hash")
     {
         for (auto &p : std::filesystem::directory_iterator("."))
@@ -49,11 +54,31 @@ void resourceManager::playSound(const std::string &name)
 
 const sf::Font &resourceManager::getFont(const std::string &name)
 {
-    static std::map<std::string, sf::Font> fontMap;
+    static std::unordered_map<std::string, sf::Font> fontMap;
     if (!fontMap.count(name))
     {
         fontMap[name] = sf::Font();
         fontMap[name].loadFromFile(name);
     }
     return fontMap[name];
+}
+
+const TurretPrototype &resourceManager::getTurretPrototype(const std::string &name)
+{
+    static std::unordered_map<std::string, TurretPrototype> protoMap;
+    if (!protoMap.count(name))
+    {
+        protoMap[name] = resourceManager::getJSON(name).get<TurretPrototype>();
+    }
+    return protoMap[name];
+}
+
+const SpaceshipPrototype &resourceManager::getSpaceshipPrototype(const std::string &name)
+{
+    static std::unordered_map<std::string, SpaceshipPrototype> protoMap;
+    if (!protoMap.count(name))
+    {
+        protoMap[name] = resourceManager::getJSON(name).get<SpaceshipPrototype>();
+    }
+    return protoMap[name];
 }

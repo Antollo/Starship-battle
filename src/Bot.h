@@ -27,25 +27,14 @@ public:
         {
             if (objects.count(targetId) == 0)
                 continue;
-            //if (object.getTypeId() == Object::TypeId::Spaceship)
             if (getCenterPosition().getSquaredDistance(objects[targetId]->getCenterPosition()) < getCenterPosition().getSquaredDistance(newAimCoords))
                 newAimCoords = objects[targetId]->getCenterPosition();
         }
 
-        /*newAimCoords = std::min_element(objects.begin(), objects.end(), [this](const auto& a, const auto& b) {
-            //if (a.second->getTypeId() == Object::TypeId::Spaceship && b.second->getTypeId() != Object::TypeId::Spaceship)
-            //    return true;
-            return getCenterPosition().getSquaredDistance(a.second->getCenterPosition()) < getCenterPosition().getSquaredDistance(b.second->getCenterPosition());
-        })->second->getCenterPosition();*/
-
         if (newAimCoords != Vec2f{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()})
         {
-            aimCoords = newAimCoords; //+ Vec2f{worldScale * (uniformRNG<0, 1, 1, 1>() - 0.5f), worldScale * (uniformRNG<0, 1, 1, 1>() - 0.5f)};
-            float aimAngle = std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle();
-            while (aimAngle > pi)
-                aimAngle -= 2.f * pi;
-            while (aimAngle < -pi)
-                aimAngle += 2.f * pi;
+            aimCoords = newAimCoords;
+            float aimAngle = sf::radians(std::atan2(aimCoords.y - getCenterPosition().y, aimCoords.x - getCenterPosition().x) - body->GetAngle()).wrapSigned().asRadians();
 
             if (getCenterPosition().getSquaredDistance(newAimCoords) < 100000.f * 80000.f && aimAngle > -0.6f && aimAngle < 0.6f)
                 shoot = true;
@@ -91,10 +80,6 @@ public:
             if (obj.second->getTypeId() == Object::TypeId::Bot && obj.second->getId() != id)
                 dynamic_cast<Bot &>(*obj.second).target(id);
     }
-    ~Bot() override
-    {
-        //create(t, pID);
-    }
 
 private:
     std::set<Object::ObjectId> targets;
@@ -104,7 +89,7 @@ private:
     void onShoot() noexcept override
     {
         if (clock.getElapsedTime().asSeconds() > *reloadIt)
-            if (Rng::uniform<0, 1, 1, 1>() < 0.3f)
+            if (Rng::uniform() < 0.3f)
                 clock.restart();
             else
                 Spaceship::onShoot();

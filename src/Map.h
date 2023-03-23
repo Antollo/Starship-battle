@@ -39,8 +39,8 @@ public:
     }
     b2Vec2 randomPosition() const override
     {
-        return {(Rng::uniform<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale,
-                (Rng::uniform<0, 1, 1, 1>() * Object::worldLimits * 2.f - Object::worldLimits) / Object::worldScale};
+        return {(Rng::uniform() * world::limits * 2.f - world::limits) / world::scale,
+                (Rng::uniform() * world::limits * 2.f - world::limits) / world::scale};
     }
 };
 
@@ -55,8 +55,8 @@ public:
                 point = '.';
         for (auto &room : rooms)
         {
-            room.x = width * Rng::uniform<0, 1, 1, 1>();
-            room.y = height * Rng::uniform<0, 1, 1, 1>();
+            room.x = width * Rng::uniform();
+            room.y = height * Rng::uniform();
             room.width = radius * Rng::uniform<3, 4, 5, 4>();
             room.height = radius * Rng::uniform<3, 4, 5, 4>();
             for (int i = room.y - room.height; i <= room.y + room.height; i++)
@@ -81,7 +81,7 @@ public:
 
     b2Vec2 randomPosition() const override
     {
-        int i = rooms.size() * Rng::uniform<0, 1, 1, 1>();
+        int i = rooms.size() * Rng::uniform();
         return {transform(rooms[i].x), transform(rooms[i].y)};
     }
 
@@ -185,7 +185,7 @@ private:
 
 Map *Map::create()
 {
-    if (Rng::uniform<0, 1, 1, 1>() >= 0.5f)
+    if (Rng::uniform() >= 0.5f)
         return new MazeMap();
     else
         return new OpenMap();

@@ -27,16 +27,15 @@ public:
     }
     Vec2f getCenterPosition() const override
     {
-        body->GetMassData(const_cast<b2MassData *>(&massData));
-        return getTransform().transformPoint(massData.center.x * worldScale, massData.center.y * worldScale);
+        return getTransform().transformPoint(proto.origin);
     }
     Vec2f getLinearVelocity() const override
     {
-        return Vec2f::asVec2f(body->GetLinearVelocity()) * worldScale;
+        return Vec2f::asVec2f(body->GetLinearVelocity()) * world::scale;
     }
-    float getAngularVelocity() const override
+    sf::Angle getAngularVelocity() const override
     {
-        return body->GetAngularVelocity() * 180.f / pi;
+        return sf::radians(body->GetAngularVelocity());
     }
     float getReloadState()
     {
@@ -48,11 +47,15 @@ public:
     }
     float getMaxHp() const
     {
-        return maxHp;
+        return proto.hp;
     }
     float getHp() const
     {
         return hp;
+    }
+    float getArmor() const
+    {
+        return proto.armor;
     }
     void inceaseHp(float value)
     {
@@ -60,7 +63,8 @@ public:
     }
     void increaseArmor(float value)
     {
-        armor += value;
+        // TODO
+        // armor += value;
     }
     const std::wstring &getPlayerId() const
     {
@@ -68,18 +72,13 @@ public:
     }
     const std::vector<std::pair<Vec2f, Vec2f>> &getEdges() const
     {
-        auto shapePtr = ServerShape::getShape(shape);
-        if (shapePtr == nullptr)
-        {
-            static std::vector<std::pair<Vec2f, Vec2f>> ret;
-            return ret;
-        }
+        // TODO: store in prototype 
         static std::vector<std::pair<Vec2f, Vec2f>> ret;
-        ret.resize(shapePtr->vertices.size() - 1);
-        for (std::size_t i = 0; i < shapePtr->vertices.size() - 1; i++)
+        ret.resize(proto.points.size() - 1);
+        for (std::size_t i = 0; i < proto.points.size() - 1; i++)
         {
-            ret[i].first = Vec2f::asVec2f(getTransform().transformPoint(shapePtr->vertices[i]) / worldScale);
-            ret[i].second = Vec2f::asVec2f(getTransform().transformPoint(shapePtr->vertices[i + 1]) / worldScale);
+            ret[i].first = Vec2f::asVec2f(getTransform().transformPoint(proto.points[i]) / world::scale);
+            ret[i].second = Vec2f::asVec2f(getTransform().transformPoint(proto.points[i + 1]) / world::scale);
         }
         return ret;
     }
@@ -100,15 +99,14 @@ public:
                 Object::objects[id]->destroy = true;
         }
 
-        Rock::create(shape, body);
+        Rock::create(proto.shapeId, body);
     }
     void process(float delta) override
     {
-        body->GetMassData(&massData);
-        setOrigin(massData.center.x * worldScale, massData.center.y * worldScale);
-        setPosition(body->GetPosition().x * worldScale, body->GetPosition().y * worldScale);
-        setRotation(body->GetAngle() * 180.f / pi);
-        setOrigin(0, 0);
+        setOrigin(proto.origin);
+        setPosition(Vec2f::asVec2f(body->GetPosition()) * world::scale);
+        setRotation(sf::radians(body->GetAngle()));
+        setOrigin({0, 0});
         if (forward)
             onForward();
         if (left)
@@ -125,34 +123,31 @@ public:
     Vec2f aimCoords;
 
 private:
-    Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1), ObjectId objectId = 0);
-    void draw(RenderSerializerBase &target) const noexcept override
+    Spaceship(const std::string &type, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1), ObjectId objectId = 0)
+        : Spaceship(resourceManager::getSpaceshipPrototype(type), newPlayerId, objectId) {}
+
+    Spaceship(const SpaceshipPrototype &prototype, const std::wstring &newPlayerId = L"AutomatedPilot-" + std::to_wstring(counter + 1), ObjectId objectId = 0);
+
+    void draw(RenderSerializerBase &target) const override
     {
         Vec2f myLinearVelocity = getLinearVelocity();
-        float myRotation = getRotation();
-        float myAngularVelocity = getAngularVelocity();
-        target.draw(shape, myRotation, getCenterPosition(), myLinearVelocity, myAngularVelocity);
+        sf::Angle myRotation = getRotation();
+        sf::Angle myAngularVelocity = getAngularVelocity();
+        target.draw(proto.shapeId, myRotation, getCenterPosition(), myLinearVelocity, myAngularVelocity);
         for (const Turret &turret : turrets)
             turret.draw(target, myRotation, getTransform(), myLinearVelocity, myAngularVelocity);
     }
     void onForward() noexcept
     {
-        body->ApplyForceToCenter(b2Vec2(cosf(body->GetAngle()) * force, sinf(body->GetAngle()) * force), true);
+        body->ApplyForceToCenter(b2Vec2(std::cos(body->GetAngle()) * proto.force, std::sin(body->GetAngle()) * proto.force), true);
     }
     void onLeft() noexcept
     {
-        body->ApplyTorque(-torque, true);
+        body->ApplyTorque(-proto.torque, true);
     }
     void onRight() noexcept
     {
-        body->ApplyTorque(torque, true);
-    }
-    inline float piPi(float x)
-    {
-        x = std::fmod(x + pi, 2 * pi);
-        if (x < 0)
-            x += 2 * pi;
-        return x - pi;
+        body->ApplyTorque(proto.torque, true);
     }
     void onAim(float delta) noexcept
     {
@@ -163,7 +158,7 @@ private:
             targetRelativeToTurret = getInverseTransform().transformPoint(aimCoords) - turret.getPosition();
 
             float dest = std::atan2(targetRelativeToTurret.y, targetRelativeToTurret.x);
-            aimState |= turret.setRotation(dest * 180.f / pi, delta);
+            aimState |= turret.setRotation(sf::radians(dest), delta);
         }
     }
     virtual void onShoot() noexcept
@@ -171,19 +166,19 @@ private:
         if (clock.getElapsedTime().asSeconds() > *reloadIt)
         {
             for (Turret &turret : turrets)
-                turret.shoot(getTransform(), getRotation() / 180.f * pi, Vec2f::asVec2f(body->GetLinearVelocity()), -getId());
+                turret.shoot(getTransform(), getRotation(), Vec2f::asVec2f(body->GetLinearVelocity()), -getId());
             clock.restart();
             reloadIt++;
-            if (reloadIt == reload.end())
-                reloadIt = reload.begin();
+            if (reloadIt == proto.reload.end())
+                reloadIt = proto.reload.begin();
         }
     }
+
+    const SpaceshipPrototype &proto;
     std::wstring playerId;
     b2Body *body;
-    b2MassData massData;
-    float force, torque, maxHp, hp, armor;
-    std::vector<float> reload;
-    std::vector<float>::iterator reloadIt;
+    float hp;
+    std::vector<float>::const_iterator reloadIt;
     bool aimState;
     std::vector<Turret> turrets;
     std::vector<Object::ObjectId> shields;

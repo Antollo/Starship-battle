@@ -91,9 +91,9 @@ private:
 
             float bulletAngle = std::atan2(vel1.y, vel1.x);
 
-            float damage = std::roundf(bullet->damage * Rng::uniform<3, 4, 5, 4>());
-            float penetration = bullet->penetration * Rng::uniform<3, 4, 5, 4>();
-            if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 20.f && penetration > spaceship->armor)
+            float damage = std::roundf(bullet->proto.damage * Rng::uniform<3, 4, 5, 4>());
+            float penetration = bullet->proto.penetration * Rng::uniform<3, 4, 5, 4>();
+            if (std::min(angle, pi - angle) > pi / 6.f && impactVelocity.getLength() > 20.f && penetration > spaceship->getArmor())
             {
                 Stats::damageDealt(bullet->getId(), std::min(damage, spaceship->hp));
                 Stats::hpLost(spaceship->getId(), std::min(damage, spaceship->hp));
@@ -102,7 +102,7 @@ private:
                 spaceship->hp -= damage;
 
                 downEvents.emplace_back(DownEvent::Type::Collision);
-                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * world::scale;
                 if (bulletAngle < 0.f)
                     bulletAngle += 2.f * pi;
                 else if (bulletAngle > 2 * pi)
@@ -119,7 +119,7 @@ private:
                     downEvents.emplace_back(DownEvent::Type::Message);
                     downEvents.back().message = spaceship->playerId + L" was warped to HQ\n";
                     Spaceship &player = dynamic_cast<Spaceship &>(*Object::objects[bullet->getId()]);
-                    player.hp = player.maxHp;
+                    player.hp = player.getMaxHp();
                 }
 
                 if (spaceship->getTypeId() == Object::TypeId::Bot)
@@ -128,7 +128,7 @@ private:
             else
             {
                 downEvents.emplace_back(DownEvent::Type::Collision);
-                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+                downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * world::scale;
                 downEvents.back().explosion = 0;
                 downEvents.back().message = L"";
                 //downEvents.back().message = spaceship->playerId + L" bounced the bullet\n";
@@ -142,7 +142,7 @@ private:
             contact->GetWorldManifold(&worldManifold);
 
             downEvents.emplace_back(DownEvent::Type::Collision);
-            downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * Object::worldScale;
+            downEvents.back().vec = (sf::Vector2f)Vec2f::asVec2f(worldManifold.points[0]) * world::scale;
             downEvents.back().explosion = 1;
             downEvents.back().message = L"";
         }

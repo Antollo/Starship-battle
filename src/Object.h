@@ -13,6 +13,7 @@
 #include "resourceManager.h"
 #include "Shape.h"
 #include "Rng.h"
+#include "world.h"
 
 using namespace std::string_literals;
 
@@ -24,13 +25,11 @@ class RenderSerializerBase
 {
 public:
     virtual void draw(const RenderSerializable &drawable) = 0;
-    virtual void draw(Shape::IdType shape, float rotation, const Vec2f &position, const Vec2f &linearVelocity, float angularVelocity) = 0;
+    virtual void draw(Shape::IdType shape, sf::Angle rotation, const Vec2f &position, const Vec2f &linearVelocity, sf::Angle angularVelocity) = 0;
 };
 
 class RenderSerializable
 {
-protected:
-    Shape::IdType shape = 0;
 private:
     friend class RenderSerializerBase;
     friend class RenderSerializer;
@@ -54,7 +53,7 @@ public:
     virtual const TypeId getTypeId() const { return TypeId::Invalid; };
     virtual Vec2f getCenterPosition() const = 0;
     virtual Vec2f getLinearVelocity() const = 0;
-    virtual float getAngularVelocity() const = 0;
+    virtual sf::Angle getAngularVelocity() const = 0;
     Object() : destroy(false), id(++counter)
     {
         if (counter == std::numeric_limits<Object::ObjectId>::max())
@@ -65,6 +64,7 @@ public:
         if (counter == std::numeric_limits<Object::ObjectId>::max())
             counter = 1;
     }
+    virtual ~Object() {}
     virtual ObjectId getId() { return id; }
     virtual void process(float delta) = 0;
     void checkDestroy()
@@ -78,9 +78,6 @@ public:
     static ObjectId thisPlayerId;
     static b2World world;
 
-    static constexpr float worldScale = 40.f;
-    static constexpr float worldLimits = 12000.f;
-    virtual ~Object() {}
     static void processAll(float delta)
     {
         for (const auto &object : Object::objects)
@@ -106,13 +103,6 @@ protected:
     ObjectId id;
 
 private:
-    void draw(RenderSerializerBase &target) const override
-    {
-        //TODO
-        //transform?
-        target.draw(shape, getRotation(), getCenterPosition(), getLinearVelocity(), getAngularVelocity());
-    }
-
     void onDestroy()
     {
         objects.erase(id);
